@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/recrsn/git-ai/cmd/commit"
+	"github.com/recrsn/git-ai/cmd/config"
 	"github.com/spf13/cobra"
 )
 
@@ -17,6 +18,7 @@ var rootCmd = &cobra.Command{
 func init() {
 	// Add subcommands
 	rootCmd.AddCommand(commit.Cmd)
+	rootCmd.AddCommand(config.Cmd)
 }
 
 func main() {
