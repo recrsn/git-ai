@@ -41,10 +41,20 @@ Before using Git AI, you need to configure your LLM provider:
 4. Select the model you want to use
 5. Customize the API endpoint if needed
 
-The configuration is stored in `~/.git-ai.yaml`. You can also use environment variables:
-- `GIT_AI_API_KEY`: Your LLM provider API key
-- `GIT_AI_MODEL`: The model to use (e.g., "gpt-4-turbo")
-- `GIT_AI_API_URL`: The API endpoint URL
+### Configuration Files
+
+Git AI looks for configuration in multiple locations, in order of precedence (highest to lowest):
+
+1. Command-line specified config file: `git ai --config /path/to/config.yaml`
+2. Project-specific config: `./.git-ai.yaml` in the current working directory
+3. User-specific config: `~/.git-ai.yaml` in the home directory
+4. Environment variables:
+   - `GIT_AI_API_KEY`: Your LLM provider API key
+   - `GIT_AI_MODEL`: The model to use (e.g., "gpt-4-turbo")
+   - `GIT_AI_API_URL`: The API endpoint URL
+5. Default values
+
+This allows you to have global settings in your home directory, while overriding them on a per-project basis with a `.git-ai.yaml` file in your repository.
 
 ## Usage
 
@@ -63,6 +73,9 @@ git ai commit --conventional
 
 # Explicitly avoid using conventional commit format
 git ai commit --no-conventional
+
+# Use a specific config file
+git ai --config /path/to/config.yaml commit
 ```
 
 Git AI automatically detects whether your repository uses conventional commit format by analyzing your commit history. If more than 50% of your recent commits follow the conventional format (`type(scope): description`), Git AI will default to generating messages in that style.

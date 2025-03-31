@@ -1,12 +1,12 @@
 package commit
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/recrsn/git-ai/pkg/config"
 	"github.com/recrsn/git-ai/pkg/git"
 	"github.com/recrsn/git-ai/pkg/llm"
+	"github.com/recrsn/git-ai/pkg/logger"
 	"github.com/recrsn/git-ai/pkg/ui"
 	"github.com/spf13/cobra"
 )
@@ -36,20 +36,19 @@ func init() {
 func executeCommit() {
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		fmt.Printf("Failed to load config: %v\n", err)
-		os.Exit(1)
+		logger.Fatal("Failed to load config: %v", err)
 	}
 
 	// Check if there are staged changes
 	if !git.HasStagedChanges() {
-		fmt.Println("No staged changes found. Please stage your changes with 'git add' first.")
+		logger.Error("No staged changes found. Please stage your changes with 'git add' first.")
 		os.Exit(1)
 	}
 
 	// Get the staged changes diff
 	diff := git.GetStagedDiff()
 	if diff == "" {
-		fmt.Println("Could not retrieve diff of staged changes.")
+		logger.Error("Could not retrieve diff of staged changes.")
 		os.Exit(1)
 	}
 
@@ -60,7 +59,7 @@ func executeCommit() {
 	useConventionalCommits := shouldUseConventionalCommits()
 
 	// Generate commit message based on staged changes and history
-	fmt.Println("Generating commit message with LLM...")
+	logger.Info("Generating commit message with LLM...")
 	message := llm.GenerateCommitMessage(cfg, diff, recentCommits, useConventionalCommits)
 
 	// If auto-approve flag is not set, ask user to confirm or edit
@@ -80,11 +79,10 @@ func executeCommit() {
 	// Create the commit with the message
 	err = git.CreateCommit(message)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		logger.Fatal("Failed to create commit: %v", err)
 	}
 
-	fmt.Println("Commit created successfully!")
+	logger.Info("Commit created successfully!")
 }
 
 // shouldUseConventionalCommits determines whether to use conventional commit format
@@ -120,6 +118,6 @@ func saveCommitFormatPreference(useConventional bool) {
 
 	err := git.SetConfig(configKey, value)
 	if err != nil {
-		fmt.Printf("Warning: Could not save commit format preference: %v\n", err)
+		logger.Warn("Could not save commit format preference: %v", err)
 	}
 }

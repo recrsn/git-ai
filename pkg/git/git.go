@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+
+	"github.com/recrsn/git-ai/pkg/logger"
 )
 
 // HasStagedChanges checks if there are any staged changes in the git repository
@@ -23,7 +25,7 @@ func GetStagedDiff() string {
 	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {
-		fmt.Printf("Error getting staged changes: %v\n", err)
+		logger.Error("Error getting staged changes: %v", err)
 		return ""
 	}
 	return out.String()
@@ -36,7 +38,7 @@ func GetRecentCommits() string {
 	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {
-		fmt.Printf("Error getting recent commits: %v\n", err)
+		logger.Error("Error getting recent commits: %v", err)
 		return ""
 	}
 	return out.String()
@@ -49,7 +51,7 @@ func GetChangedFiles() string {
 	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {
-		fmt.Printf("Error getting changed files: %v\n", err)
+		logger.Error("Error getting changed files: %v", err)
 		return ""
 	}
 	return out.String()
@@ -64,6 +66,7 @@ func CreateCommit(message string) error {
 
 	err := cmd.Run()
 	if err != nil {
+		logger.Error("Error creating commit: %v: %s", err, stderr.String())
 		return fmt.Errorf("error creating commit: %v: %s", err, stderr.String())
 	}
 	return nil
@@ -78,6 +81,7 @@ func UsesConventionalCommits() bool {
 	err := cmd.Run()
 	if err != nil {
 		// If command fails (maybe new repo), just return false
+		logger.Debug("Error checking conventional commits: %v", err)
 		return false
 	}
 
@@ -125,6 +129,7 @@ func SetConfig(key, value string) error {
 	cmd := exec.Command("git", "config", key, value)
 	err := cmd.Run()
 	if err != nil {
+		logger.Error("Error setting git config %s: %v", key, err)
 		return fmt.Errorf("error setting git config %s: %v", key, err)
 	}
 	return nil

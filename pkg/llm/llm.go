@@ -3,6 +3,7 @@ package llm
 import (
 	"fmt"
 	"github.com/recrsn/git-ai/pkg/config"
+	"github.com/recrsn/git-ai/pkg/logger"
 	"strings"
 
 	"github.com/recrsn/git-ai/pkg/git"
@@ -13,8 +14,8 @@ func GenerateCommitMessage(cfg config.Config, diff, recentCommits string, useCon
 	// Try to use the LLM for commit message generation
 	message, err := generateWithLLM(cfg, diff, recentCommits, useConventionalCommits)
 	if err != nil {
-		fmt.Printf("Warning: Failed to generate commit message with LLM: %v\n", err)
-		fmt.Println("Falling back to simple commit message generation")
+		logger.Warn("Failed to generate commit message with LLM: %v\n", err)
+		logger.Warn("Falling back to simple commit message generation")
 		return generateSimpleMessage()
 	}
 
