@@ -10,5 +10,3 @@ Generate a commit message for these changes:
 
 # Recent commit messages for context:
 {{.RecentCommits}}
-
-Write a clear and concise commit message following conventional commit format (type(scope): description). Focus on the "what" and "why" of the changes, not just the "how".

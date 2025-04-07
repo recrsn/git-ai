@@ -12,9 +12,10 @@ import (
 )
 
 var (
-	autoApprove           bool
-	conventionalCommits   bool
-	noConventionalCommits bool
+	autoApprove             bool
+	conventionalCommits     bool
+	noConventionalCommits   bool
+	commitsWithDescriptions bool
 )
 
 // Cmd represents the commit command
@@ -31,6 +32,7 @@ func init() {
 	Cmd.Flags().BoolVar(&autoApprove, "auto", false, "Automatically approve the generated commit message without prompting")
 	Cmd.Flags().BoolVar(&conventionalCommits, "conventional", false, "Use conventional commit format (type(scope): description)")
 	Cmd.Flags().BoolVar(&noConventionalCommits, "no-conventional", false, "Don't use conventional commit format")
+	Cmd.Flags().BoolVar(&commitsWithDescriptions, "with-descriptions", false, "Generate commit messages with detailed descriptions")
 }
 
 func executeCommit() {
@@ -43,6 +45,14 @@ func executeCommit() {
 	if !git.HasStagedChanges() {
 		logger.Error("No staged changes found. Please stage your changes with 'git add' first.")
 		os.Exit(1)
+	}
+
+	// If the --with-descriptions flag wasn't explicitly set, check git config
+	if !commitsWithDescriptions {
+		value, err := git.GetConfig("git-ai.commitsWithDescriptions")
+		if err == nil && value == "true" {
+			commitsWithDescriptions = true
+		}
 	}
 
 	// Get the staged changes diff
@@ -59,8 +69,8 @@ func executeCommit() {
 	useConventionalCommits := shouldUseConventionalCommits()
 
 	// Generate commit message based on staged changes and history
-	logger.Info("Generating commit message with LLM...")
-	message := llm.GenerateCommitMessage(cfg, diff, recentCommits, useConventionalCommits)
+	logger.PrintMessage("Generating commit message with LLM...")
+	message := llm.GenerateCommitMessage(cfg, diff, recentCommits, useConventionalCommits, commitsWithDescriptions)
 
 	// If auto-approve flag is not set, ask user to confirm or edit
 	var proceed bool
@@ -76,13 +86,18 @@ func executeCommit() {
 		saveCommitFormatPreference(conventionalCommits)
 	}
 
+	// Save commit description preference if the flag was explicitly provided
+	if commitsWithDescriptions {
+		saveCommitDescriptionPreference(true)
+	}
+
 	// Create the commit with the message
 	err = git.CreateCommit(message)
 	if err != nil {
 		logger.Fatal("Failed to create commit: %v", err)
 	}
 
-	logger.Info("Commit created successfully!")
+	logger.PrintMessage("Commit created successfully!")
 }
 
 // shouldUseConventionalCommits determines whether to use conventional commit format
@@ -119,5 +134,19 @@ func saveCommitFormatPreference(useConventional bool) {
 	err := git.SetConfig(configKey, value)
 	if err != nil {
 		logger.Warn("Could not save commit format preference: %v", err)
+	}
+}
+
+// saveCommitDescriptionPreference saves the user's preference for commit description format to git config
+func saveCommitDescriptionPreference(useDescriptions bool) {
+	configKey := "git-ai.commitsWithDescriptions"
+	value := "false"
+	if useDescriptions {
+		value = "true"
+	}
+
+	err := git.SetConfig(configKey, value)
+	if err != nil {
+		logger.Warn("Could not save commit description preference: %v", err)
 	}
 }

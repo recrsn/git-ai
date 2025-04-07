@@ -87,12 +87,12 @@ func UsesConventionalCommits() bool {
 
 	// Define regex pattern for conventional commits
 	conventionalPattern := regexp.MustCompile(`^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-zA-Z0-9_-]+\))?: .+`)
-	
+
 	// Count commits following the convention
 	commits := strings.Split(out.String(), "\n")
 	conventionalCount := 0
 	totalCount := 0
-	
+
 	for _, commit := range commits {
 		if commit == "" {
 			continue
@@ -102,12 +102,12 @@ func UsesConventionalCommits() bool {
 			conventionalCount++
 		}
 	}
-	
+
 	// If more than 50% of commits follow convention, return true
 	if totalCount > 0 && conventionalCount*100/totalCount >= 50 {
 		return true
 	}
-	
+
 	return false
 }
 

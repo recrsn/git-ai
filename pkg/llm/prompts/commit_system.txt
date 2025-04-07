@@ -14,8 +14,10 @@ Follow these rules:
    - Use imperative mood (e.g., "Add feature" not "Added feature")
    - Capitalize the first word
    - No period at the end
+   - Do not use the conventional commit format
 {{end}}
 
+{{if .CommitsWithDescriptions}}
 2. Focus on the "what" and "why" of the changes, not just the "how"
    - Explain the purpose and impact of the change
    - Mention the problem being solved if it's a bug fix
@@ -31,5 +33,11 @@ Follow these rules:
 5. End with any relevant issue IDs or references
    - e.g., "Fixes #123" or "Related to #456"
    - Include only if present in the original issue
+{{else}}
+2. Generate ONLY a one-line commit message with NO description or body
+   - Focus on the most important aspect of the change
+   - Be specific and meaningful in a single line
+   - Include only the subject line, with no body text
+{{end}}
 
 Respond ONLY with the commit message, nothing else.

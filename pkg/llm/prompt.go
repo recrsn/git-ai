@@ -18,14 +18,15 @@ var commitUserPromptTemplate string
 
 // PromptData contains the data to be inserted into the prompt template
 type PromptData struct {
-	Diff            string
-	ChangedFiles    string
-	RecentCommits   string
-	UseConventional bool
+	Diff                    string
+	ChangedFiles            string
+	RecentCommits           string
+	UseConventional         bool
+	CommitsWithDescriptions bool
 }
 
 // GetSystemPrompt returns the system prompt for commit message generation
-func GetSystemPrompt(useConventionalCommits bool) string {
+func GetSystemPrompt(useConventionalCommits bool, commitsWithDescriptions bool) string {
 	// Define template functions
 	funcMap := template.FuncMap{
 		"trimSpace": strings.TrimSpace,
@@ -42,9 +43,11 @@ func GetSystemPrompt(useConventionalCommits bool) string {
 
 	// Prepare data for the template
 	data := struct {
-		UseConventional bool
+		UseConventional         bool
+		CommitsWithDescriptions bool
 	}{
-		UseConventional: useConventionalCommits,
+		UseConventional:         useConventionalCommits,
+		CommitsWithDescriptions: commitsWithDescriptions,
 	}
 
 	// Execute the template

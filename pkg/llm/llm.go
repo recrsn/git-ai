@@ -10,9 +10,9 @@ import (
 )
 
 // GenerateCommitMessage generates a commit message based on staged changes and commit history
-func GenerateCommitMessage(cfg config.Config, diff, recentCommits string, useConventionalCommits bool) string {
+func GenerateCommitMessage(cfg config.Config, diff, recentCommits string, useConventionalCommits bool, commitsWithDescriptions bool) string {
 	// Try to use the LLM for commit message generation
-	message, err := generateWithLLM(cfg, diff, recentCommits, useConventionalCommits)
+	message, err := generateWithLLM(cfg, diff, recentCommits, useConventionalCommits, commitsWithDescriptions)
 	if err != nil {
 		logger.Warn("Failed to generate commit message with LLM: %v\n", err)
 		logger.Warn("Falling back to simple commit message generation")
@@ -23,7 +23,7 @@ func GenerateCommitMessage(cfg config.Config, diff, recentCommits string, useCon
 }
 
 // generateWithLLM uses an LLM to generate a commit message
-func generateWithLLM(cfg config.Config, diff, recentCommits string, useConventionalCommits bool) (string, error) {
+func generateWithLLM(cfg config.Config, diff, recentCommits string, useConventionalCommits bool, commitsWithDescriptions bool) (string, error) {
 	if cfg.Endpoint == "" || cfg.APIKey == "" {
 		return "", fmt.Errorf("LLM endpoint or API key not configured")
 	}
@@ -37,7 +37,7 @@ func generateWithLLM(cfg config.Config, diff, recentCommits string, useConventio
 	changedFiles := git.GetChangedFiles()
 
 	// Get system and user prompts
-	systemPrompt := GetSystemPrompt(useConventionalCommits)
+	systemPrompt := GetSystemPrompt(useConventionalCommits, commitsWithDescriptions)
 	userPrompt, err := GetUserPrompt(diff, changedFiles, recentCommits)
 	if err != nil {
 		return "", fmt.Errorf("failed to build prompt: %w", err)

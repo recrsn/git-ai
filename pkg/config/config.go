@@ -40,21 +40,21 @@ func initViper() (*viper.Viper, error) {
 	// If explicit config file is provided, only use that
 	if ExplicitConfigPath != "" {
 		v.SetConfigFile(ExplicitConfigPath)
-		
+
 		// Set defaults
 		defaults := DefaultConfig()
 		v.SetDefault("provider", defaults.Provider)
 		v.SetDefault("api_key", defaults.APIKey)
 		v.SetDefault("model", defaults.Model)
 		v.SetDefault("endpoint", defaults.Endpoint)
-		
+
 		// Read configuration
 		if err := v.ReadInConfig(); err != nil {
 			return nil, fmt.Errorf("failed to read config file %s: %w", ExplicitConfigPath, err)
 		}
-		
+
 		logger.Debug("Using configuration from %s", v.ConfigFileUsed())
-		
+
 		return v, nil
 	}
 
@@ -105,7 +105,7 @@ func initViper() (*viper.Viper, error) {
 		logger.Debug("Config file not found, using defaults and environment variables")
 	} else {
 		logger.Debug("Using configuration from %s", v.ConfigFileUsed())
-		
+
 		// If we read a config from home, check if there's also one in cwd
 		if cwd != "" && v.ConfigFileUsed() == filepath.Join(homeDir, ".git-ai.yaml") {
 			// Create a new viper instance for the cwd config
@@ -113,11 +113,11 @@ func initViper() (*viper.Viper, error) {
 			cwdViper.SetConfigName(".git-ai")
 			cwdViper.SetConfigType("yaml")
 			cwdViper.AddConfigPath(cwd)
-			
+
 			// Try to read cwd config
 			if err := cwdViper.ReadInConfig(); err == nil {
 				logger.Debug("Merging configuration from %s", cwdViper.ConfigFileUsed())
-				
+
 				// Merge configs, with cwd taking precedence
 				for _, key := range cwdViper.AllKeys() {
 					v.Set(key, cwdViper.Get(key))
@@ -149,7 +149,7 @@ func LoadConfig() (Config, error) {
 func SaveConfig(config Config) error {
 	// If explicit config path was provided, save to that location
 	configPath := ExplicitConfigPath
-	
+
 	// Otherwise default to home directory
 	if configPath == "" {
 		homeDir, err := os.UserHomeDir()
