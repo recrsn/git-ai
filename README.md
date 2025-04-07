@@ -1,31 +1,70 @@
 # Git AI
 
-Git AI is a Git extension that enhances your Git workflow with AI-powered features.
+Git AI enhances your Git workflow with AI-powered features.
 
 ## Features
 
-- `git ai commit`: Analyze staged changes and generate commit messages automatically
-  - Uses LLMs to generate contextually relevant and well-formatted commit messages
-  - Interactive approval process with option to edit the suggested message
-  - `--auto` flag to automatically approve and commit without prompt
-- `git ai config`: Configure your LLM settings
-  - Set up API keys for your preferred LLM provider
-  - Choose from different models (OpenAI, Anthropic, Ollama, etc.)
-  - Customize API endpoints for self-hosted or alternative providers
+- `git ai commit`: Generates commit messages from staged changes
+  - Create relevant, well-formatted commit messages
+  - Provide interactive approval with edit option
+  - Commit automatically with `--auto` flag
+  - Add detailed descriptions with `--with-descriptions`
+  - Control format with `--conventional` and `--no-conventional` flags
+- `git ai config`: Manages LLM settings
+  - Set up API keys for your preferred provider
+  - Offer various models (OpenAI, Anthropic, Ollama, etc.)
+  - Support custom endpoints for self-hosted options
+  - Enable custom providers through API configuration
 
 ## Installation
 
-```bash
-# Clone the repository
-git clone https://github.com/recrsn/git-ai.git
+### Quick Install (Recommended)
 
-# Build the binary
+```bash
+curl -fsSL https://raw.githubusercontent.com/recrsn/git-ai/main/install.sh | bash
+```
+
+This will download and install the latest release to `~/.local/bin/git-ai`.
+
+### Manual Installation
+
+#### Download Binary
+
+```bash
+# Create ~/.local/bin if it doesn't exist
+mkdir -p ~/.local/bin
+
+# Download the latest release for your platform
+# Replace OS with darwin/linux and ARCH with amd64/arm64 as needed
+curl -L -o ~/.local/bin/git-ai https://github.com/recrsn/git-ai/releases/latest/download/git-ai-OS-ARCH
+
+# Make executable
+chmod +x ~/.local/bin/git-ai
+
+# Ensure ~/.local/bin is in your PATH
+# Add to your shell profile file (.bashrc, .zshrc, etc.) if needed:
+# export PATH="$PATH:$HOME/.local/bin"
+
+# Configure your LLM settings
+git ai config
+```
+
+#### Install from Source
+
+```bash
+# Using go install
+go install github.com/recrsn/git-ai@latest
+
+# OR clone and build
+git clone https://github.com/recrsn/git-ai.git
 cd git-ai
 go build
+mkdir -p ~/.local/bin
+cp git-ai ~/.local/bin/
 
-# Add to your PATH
-# For example, you can create a symlink in a directory that's already in your PATH
-ln -s "$(pwd)/git-ai" /usr/local/bin/git-ai
+# Ensure ~/.local/bin is in your PATH
+# Add to your shell profile file (.bashrc, .zshrc, etc.) if needed:
+# export PATH="$PATH:$HOME/.local/bin"
 
 # Configure your LLM settings
 git ai config
@@ -33,28 +72,31 @@ git ai config
 
 ## Setup
 
-Before using Git AI, you need to configure your LLM provider:
+Before using Git AI, configure your LLM provider:
 
-1. Run `git ai config` to set up your configuration
+1. Run `git ai config`
 2. Select your LLM provider (OpenAI, Anthropic, Ollama, or Other)
 3. Enter your API key
-4. Select the model you want to use
+4. Select your preferred model
 5. Customize the API endpoint if needed
 
 ### Configuration Files
 
-Git AI looks for configuration in multiple locations, in order of precedence (highest to lowest):
+Git AI checks configuration in these locations (highest to lowest precedence):
 
-1. Command-line specified config file: `git ai --config /path/to/config.yaml`
-2. Project-specific config: `./.git-ai.yaml` in the current working directory
-3. User-specific config: `~/.git-ai.yaml` in the home directory
+1. Command-line config: `git ai --config /path/to/config.yaml`
+2. Project config: `./.git-ai.yaml` in current directory
+3. User config: `~/.git-ai.yaml` in home directory
 4. Environment variables:
-   - `GIT_AI_API_KEY`: Your LLM provider API key
-   - `GIT_AI_MODEL`: The model to use (e.g., "gpt-4-turbo")
-   - `GIT_AI_API_URL`: The API endpoint URL
-5. Default values
+   - `GIT_AI_API_KEY`: LLM provider API key
+   - `GIT_AI_MODEL`: Model name (e.g., "gpt-4-turbo")
+   - `GIT_AI_API_URL`: API endpoint URL
+5. Git config variables:
+   - `git-ai.conventionalCommits`: Use conventional format (true/false)
+   - `git-ai.commitsWithDescriptions`: Include detailed descriptions (true/false)
+6. Default values
 
-This allows you to have global settings in your home directory, while overriding them on a per-project basis with a `.git-ai.yaml` file in your repository.
+This provides flexible configuration at global and project-specific levels.
 
 ## Usage
 
@@ -62,61 +104,68 @@ This allows you to have global settings in your home directory, while overriding
 # Stage your changes
 git add .
 
-# Generate an AI commit message
+# Generate commit message
 git ai commit
 
-# Automatically approve and commit without prompting
+# Auto-approve and commit
 git ai commit --auto
 
-# Explicitly use conventional commit format (type(scope): description)
+# Include detailed description
+git ai commit --with-descriptions
+
+# Use conventional format (type(scope): description)
 git ai commit --conventional
 
-# Explicitly avoid using conventional commit format
+# Avoid conventional format
 git ai commit --no-conventional
 
-# Use a specific config file
+# Use specific config file
 git ai --config /path/to/config.yaml commit
 ```
 
-Git AI automatically detects whether your repository uses conventional commit format by analyzing your commit history. If more than 50% of your recent commits follow the conventional format (`type(scope): description`), Git AI will default to generating messages in that style.
+Git AI analyzes your commit history to detect conventional commit format usage. When over 50% of recent commits follow the `type(scope): description` pattern, Git AI defaults to this style.
 
-You can override this detection with the `--conventional` or `--no-conventional` flags. Your preference will be saved in the git config for future commits.
+Override detection with `--conventional` or `--no-conventional` flags. Git AI saves your format and description preferences for future commits.
+
+### Setting Git Config Options
+
+Set preferences directly with Git's config system:
+
+```bash
+# Set conventional commit format preference
+git config git-ai.conventionalCommits true
+
+# Set detailed descriptions preference
+git config git-ai.commitsWithDescriptions true
+```
 
 ## How it works
 
-Git AI analyzes your staged changes and commit history, then sends this data to your configured LLM to generate contextually relevant commit messages. The prompt includes:
+Git AI analyzes your staged changes and commit history, then sends this data to your configured LLM to generate relevant commit messages. The prompt includes:
 
-1. The diff of staged changes
-2. A list of changed files
-3. Recent commit messages for context
-4. Instructions to generate a commit message following conventions
+1. Staged changes diff
+2. Changed files list
+3. Recent commit messages
+4. Instructions for message formatting
 
-The tool uses a terminal-based UI to provide an interactive experience, allowing you to approve, edit, or cancel the proposed commit message.
+Git AI presents an interactive terminal UI to approve, edit, or cancel the proposed message.
 
 ## Supported LLM Providers
 
 - OpenAI (GPT-4, GPT-3.5)
 - Anthropic (Claude)
-- Ollama (for local LLM deployment)
-- Custom providers via API endpoint configuration
+- Ollama (local deployment)
+- Custom providers via API endpoints
 
 ## Customizing Prompts
 
-The prompts used to generate commit messages are stored in text files and embedded into the binary at compile time. You can customize these prompts by editing the files in `pkg/llm/prompts/` before building:
+Git AI embeds prompt templates from text files into the binary at compile time. Edit files in `pkg/llm/prompts/` before building:
 
-- `commit_system.txt`: Contains the system instructions for the LLM, with conditional sections for conventional vs. standard format
-- `commit_user.txt`: Contains the template for the user prompt with placeholders for diff, changed files, and recent commits
+- `commit_system.txt`: LLM instructions with sections for conventional vs. standard format
+- `commit_user.txt`: User prompt template with placeholders for content
 
-Both files use Go's template syntax for dynamic content:
-- `{{if .UseConventional}}...{{else}}...{{end}}` blocks in the system prompt control format-specific instructions
-- `{{.Diff}}`, `{{.ChangedFiles}}`, and `{{.RecentCommits}}` in the user prompt insert the relevant content
+Both files use Go's template syntax:
+- `{{if .UseConventional}}...{{else}}...{{end}}` controls format instructions
+- `{{.Diff}}`, `{{.ChangedFiles}}`, `{{.RecentCommits}}` insert content
 
-After modifying the prompts, rebuild the binary with `go build` to incorporate your changes.
-
-## Development
-
-This is an early-stage project. Future improvements will include:
-- PR summarization
-- Code review assistance 
-- More intelligent analysis of code changes
-- Support for additional Git operations like branch naming and PR descriptions
+Rebuild with `go build` after modifying prompts.
