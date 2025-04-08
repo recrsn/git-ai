@@ -119,6 +119,9 @@ git ai commit --conventional
 # Avoid conventional format
 git ai commit --no-conventional
 
+# Amend previous commit
+git ai commit --amend
+
 # Use specific config file
 git ai --config /path/to/config.yaml commit
 ```

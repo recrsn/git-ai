@@ -16,6 +16,7 @@ var (
 	conventionalCommits     bool
 	noConventionalCommits   bool
 	commitsWithDescriptions bool
+	amendCommit             bool
 )
 
 // Cmd represents the commit command
@@ -33,6 +34,7 @@ func init() {
 	Cmd.Flags().BoolVar(&conventionalCommits, "conventional", false, "Use conventional commit format (type(scope): description)")
 	Cmd.Flags().BoolVar(&noConventionalCommits, "no-conventional", false, "Don't use conventional commit format")
 	Cmd.Flags().BoolVar(&commitsWithDescriptions, "with-descriptions", false, "Generate commit messages with detailed descriptions")
+	Cmd.Flags().BoolVarP(&amendCommit, "amend", "a", false, "Amend the previous commit instead of creating a new one")
 }
 
 func executeCommit() {
@@ -43,8 +45,12 @@ func executeCommit() {
 
 	// Check if there are staged changes
 	if !git.HasStagedChanges() {
-		logger.Error("No staged changes found. Please stage your changes with 'git add' first.")
-		os.Exit(1)
+		if amendCommit {
+			logger.PrintMessage("No staged changes found. Will amend the previous commit message only.")
+		} else {
+			logger.Error("No staged changes found. Please stage your changes with 'git add' first.")
+			os.Exit(1)
+		}
 	}
 
 	// If the --with-descriptions flag wasn't explicitly set, check git config
@@ -68,9 +74,17 @@ func executeCommit() {
 	// Determine whether to use conventional commits format
 	useConventionalCommits := shouldUseConventionalCommits()
 
-	// Generate commit message based on staged changes and history
-	logger.PrintMessage("Generating commit message with LLM...")
+	// Generate commit message based on staged changes and history - with spinner
+	spinner, err := ui.ShowSpinner("Generating commit message with LLM...")
+	if err != nil {
+		logger.Error("Failed to start spinner: %v", err)
+	}
+
 	message := llm.GenerateCommitMessage(cfg, diff, recentCommits, useConventionalCommits, commitsWithDescriptions)
+
+	if spinner != nil {
+		spinner.Success("Commit message generated!")
+	}
 
 	// If auto-approve flag is not set, ask user to confirm or edit
 	var proceed bool
@@ -92,12 +106,16 @@ func executeCommit() {
 	}
 
 	// Create the commit with the message
-	err = git.CreateCommit(message)
+	err = git.CreateCommit(message, amendCommit)
 	if err != nil {
 		logger.Fatal("Failed to create commit: %v", err)
 	}
 
-	logger.PrintMessage("Commit created successfully!")
+	if amendCommit {
+		logger.PrintMessage("Commit amended successfully!")
+	} else {
+		logger.PrintMessage("Commit created successfully!")
+	}
 }
 
 // shouldUseConventionalCommits determines whether to use conventional commit format

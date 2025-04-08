@@ -21,6 +21,7 @@ type Config struct {
 	APIKey   string `mapstructure:"api_key"`
 	Model    string `mapstructure:"model"`
 	Endpoint string `mapstructure:"endpoint"`
+	Editor   string `mapstructure:"editor"`
 }
 
 // DefaultConfig returns the default configuration
@@ -30,6 +31,7 @@ func DefaultConfig() Config {
 		APIKey:   "",
 		Model:    "gpt-4-turbo",
 		Endpoint: "https://api.openai.com/v1",
+		Editor:   "",
 	}
 }
 
@@ -84,6 +86,7 @@ func initViper() (*viper.Viper, error) {
 	v.SetDefault("api_key", defaults.APIKey)
 	v.SetDefault("model", defaults.Model)
 	v.SetDefault("endpoint", defaults.Endpoint)
+	v.SetDefault("editor", defaults.Editor)
 
 	// Environment variables
 	v.SetEnvPrefix("GIT_AI")
@@ -94,6 +97,7 @@ func initViper() (*viper.Viper, error) {
 	v.BindEnv("api_key", "GIT_AI_API_KEY")
 	v.BindEnv("model", "GIT_AI_MODEL")
 	v.BindEnv("endpoint", "GIT_AI_API_URL")
+	v.BindEnv("editor", "GIT_AI_EDITOR")
 
 	// Read configuration
 	err = v.ReadInConfig()
@@ -166,6 +170,7 @@ func SaveConfig(config Config) error {
 	v.Set("api_key", config.APIKey)
 	v.Set("model", config.Model)
 	v.Set("endpoint", config.Endpoint)
+	v.Set("editor", config.Editor)
 
 	if err := v.WriteConfig(); err != nil {
 		// Check if the file doesn't exist
