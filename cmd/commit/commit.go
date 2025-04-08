@@ -61,8 +61,8 @@ func executeCommit() {
 		}
 	}
 
-	// Get the staged changes diff
-	diff := git.GetStagedDiff()
+	// Get the staged changes diff, filtering out generated files
+	diff := git.GetStagedDiffFiltered()
 	if diff == "" {
 		logger.Error("Could not retrieve diff of staged changes.")
 		os.Exit(1)
