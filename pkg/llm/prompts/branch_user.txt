@@ -1,0 +1,10 @@
+Generate a Git branch name for the following request:
+
+# User request:
+{{.Request}}
+
+# Existing local branches (for context):
+{{.LocalBranches}}
+
+# Existing remote branches (for context):
+{{.RemoteBranches}}

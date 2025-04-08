@@ -87,17 +87,17 @@ func PromptForSelection(options []string, defaultOption string, promptText strin
 }
 
 // PromptForInput shows a text input prompt and returns the entered text
-func PromptForInput(promptText string, defaultText string) (string, error) {
+func PromptForInput(promptText string, defaultValue string) (string, error) {
 	return pterm.DefaultInteractiveTextInput.
-		WithDefaultText(defaultText).
+		WithDefaultValue(defaultValue).
 		Show(promptText)
 }
 
 // PromptForMultilineInput shows a multiline text input prompt
-func PromptForMultilineInput(promptText string, defaultText string) (string, error) {
+func PromptForMultilineInput(promptText string, defaultValue string) (string, error) {
 	return pterm.DefaultInteractiveTextInput.
 		WithMultiLine().
-		WithDefaultText(defaultText).
+		WithDefaultValue(defaultValue).
 		WithTextStyle(pterm.NewStyle(pterm.FgLightCyan)).
 		Show(promptText)
 }

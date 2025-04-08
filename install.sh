@@ -58,15 +58,15 @@ else
     fi
   else
     print_step "No local binary found, downloading from GitHub releases..."
-    
+
     # Get latest release from GitHub API
     LATEST_RELEASE_URL=$(curl -s https://api.github.com/repos/recrsn/git-ai/releases/latest | grep "browser_download_url.*$(uname -s | tr '[:upper:]' '[:lower:]')*$(uname -m)*" | cut -d : -f 2,3 | tr -d \")
-    
+
     if [ -z "$LATEST_RELEASE_URL" ]; then
       print_error "Could not find a release for your platform ($(uname -s), $(uname -m))"
       exit 1
     fi
-    
+
     print_step "Downloading from: $LATEST_RELEASE_URL"
     curl -L -o "$INSTALL_DIR/$BINARY_NAME" "$LATEST_RELEASE_URL"
     chmod +x "$INSTALL_DIR/$BINARY_NAME"
@@ -80,7 +80,7 @@ chmod +x "$INSTALL_DIR/$BINARY_NAME"
 # Check if ~/.local/bin is in PATH
 if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
   print_warning "$INSTALL_DIR is not in your PATH"
-  
+
   # Determine shell and provide appropriate command
   SHELL_NAME="$(basename "$SHELL")"
   case "$SHELL_NAME" in

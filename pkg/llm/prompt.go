@@ -16,13 +16,26 @@ var commitSystemPromptTemplate string
 //go:embed prompts/commit_user.txt
 var commitUserPromptTemplate string
 
-// PromptData contains the data to be inserted into the prompt template
-type PromptData struct {
+//go:embed prompts/branch_system.txt
+var branchSystemPromptTemplate string
+
+//go:embed prompts/branch_user.txt
+var branchUserPromptTemplate string
+
+// CommitPromptData contains the data to be inserted into the commit prompt template
+type CommitPromptData struct {
 	Diff                    string
 	ChangedFiles            string
 	RecentCommits           string
 	UseConventional         bool
 	CommitsWithDescriptions bool
+}
+
+// BranchPromptData contains the data to be inserted into the branch prompt template
+type BranchPromptData struct {
+	Request        string
+	LocalBranches  string
+	RemoteBranches string
 }
 
 // GetSystemPrompt returns the system prompt for commit message generation
@@ -71,7 +84,7 @@ func GetUserPrompt(diff, changedFiles, recentCommits string) (string, error) {
 	formattedRecentCommits := formatAsList(recentCommits)
 
 	// Prepare data for template
-	data := PromptData{
+	data := CommitPromptData{
 		Diff:          diff,
 		ChangedFiles:  formattedChangedFiles,
 		RecentCommits: formattedRecentCommits,
@@ -84,6 +97,43 @@ func GetUserPrompt(diff, changedFiles, recentCommits string) (string, error) {
 
 	// Parse and execute the template
 	tmpl, err := template.New("commit").Funcs(funcMap).Parse(commitUserPromptTemplate)
+	if err != nil {
+		return "", err
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return "", err
+	}
+
+	return buf.String(), nil
+}
+
+// GetBranchSystemPrompt returns the system prompt for branch name generation
+func GetBranchSystemPrompt() string {
+	return branchSystemPromptTemplate
+}
+
+// GetBranchUserPrompt generates a user prompt for branch name generation
+func GetBranchUserPrompt(request string, localBranches, remoteBranches []string) (string, error) {
+	// Format branches as a list
+	formattedLocalBranches := formatAsList(strings.Join(localBranches, "\n"))
+	formattedRemoteBranches := formatAsList(strings.Join(remoteBranches, "\n"))
+
+	// Prepare data for template
+	data := BranchPromptData{
+		Request:        request,
+		LocalBranches:  formattedLocalBranches,
+		RemoteBranches: formattedRemoteBranches,
+	}
+
+	// Define template functions
+	funcMap := template.FuncMap{
+		"trimSpace": strings.TrimSpace,
+	}
+
+	// Parse and execute the template
+	tmpl, err := template.New("branch").Funcs(funcMap).Parse(branchUserPromptTemplate)
 	if err != nil {
 		return "", err
 	}

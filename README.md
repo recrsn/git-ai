@@ -10,6 +10,12 @@ Git AI enhances your Git workflow with AI-powered features.
   - Commit automatically with `--auto` flag
   - Add detailed descriptions with `--with-descriptions`
   - Control format with `--conventional` and `--no-conventional` flags
+- `git ai branch`: Generates meaningful branch names from user input
+  - Create descriptive branch names based on your description
+  - Check existing local and remote branches for naming conventions
+  - Provide interactive approval with edit option
+  - Create branch automatically with `--auto` flag
+  - Print branch name only without creating with the option menu
 - `git ai config`: Manages LLM settings
   - Set up API keys for your preferred provider
   - Offer various models (OpenAI, Anthropic, Ollama, etc.)
@@ -122,6 +128,15 @@ git ai commit --no-conventional
 # Amend previous commit
 git ai commit --amend
 
+# Generate branch name
+git ai branch "Add sorting feature to user list"
+
+# Generate branch with auto-approval
+git ai branch --auto "Fix authentication bug"
+
+# Provide description with flag
+git ai branch -d "Update documentation for API endpoints"
+
 # Use specific config file
 git ai --config /path/to/config.yaml commit
 ```
@@ -166,9 +181,14 @@ Git AI embeds prompt templates from text files into the binary at compile time. 
 
 - `commit_system.txt`: LLM instructions with sections for conventional vs. standard format
 - `commit_user.txt`: User prompt template with placeholders for content
+- `branch_system.txt`: LLM instructions for branch name generation
+- `branch_user.txt`: User prompt template for branch creation
 
-Both files use Go's template syntax:
-- `{{if .UseConventional}}...{{else}}...{{end}}` controls format instructions
-- `{{.Diff}}`, `{{.ChangedFiles}}`, `{{.RecentCommits}}` insert content
+The prompt files use Go's template syntax:
+- For commit prompts:
+  - `{{if .UseConventional}}...{{else}}...{{end}}` controls format instructions
+  - `{{.Diff}}`, `{{.ChangedFiles}}`, `{{.RecentCommits}}` insert content
+- For branch prompts:
+  - `{{.Request}}`, `{{.LocalBranches}}`, `{{.RemoteBranches}}` insert content
 
 Rebuild with `go build` after modifying prompts.

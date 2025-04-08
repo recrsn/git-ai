@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -220,6 +219,61 @@ func SetConfig(key, value string) error {
 	if err != nil {
 		logger.Error("Error setting git config %s: %v", key, err)
 		return fmt.Errorf("error setting git config %s: %v", key, err)
+	}
+	return nil
+}
+
+// GetLocalBranches returns a list of local git branches
+func GetLocalBranches() ([]string, error) {
+	cmd := exec.Command("git", "branch", "--format=%(refname:short)")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		logger.Error("Error getting local branches: %v", err)
+		return nil, fmt.Errorf("error getting local branches: %v", err)
+	}
+
+	branches := strings.Split(strings.TrimSpace(out.String()), "\n")
+	var result []string
+	for _, branch := range branches {
+		if branch != "" {
+			result = append(result, branch)
+		}
+	}
+	return result, nil
+}
+
+// GetRemoteBranches returns a list of remote git branches
+func GetRemoteBranches() ([]string, error) {
+	cmd := exec.Command("git", "branch", "-r", "--format=%(refname:short)")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		logger.Error("Error getting remote branches: %v", err)
+		return nil, fmt.Errorf("error getting remote branches: %v", err)
+	}
+
+	branches := strings.Split(strings.TrimSpace(out.String()), "\n")
+	var result []string
+	for _, branch := range branches {
+		if branch != "" {
+			result = append(result, branch)
+		}
+	}
+	return result, nil
+}
+
+// CreateBranch creates a new git branch
+func CreateBranch(name string) error {
+	cmd := exec.Command("git", "checkout", "-b", name)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err != nil {
+		logger.Error("Error creating branch %s: %v: %s", name, err, stderr.String())
+		return fmt.Errorf("error creating branch %s: %v: %s", name, err, stderr.String())
 	}
 	return nil
 }

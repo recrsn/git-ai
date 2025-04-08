@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/recrsn/git-ai/cmd/branch"
 	"github.com/recrsn/git-ai/cmd/commit"
 	cmdConfig "github.com/recrsn/git-ai/cmd/config"
 	"github.com/recrsn/git-ai/pkg/config"
@@ -39,6 +40,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "Path to config file (default is $HOME/.git-ai.yaml and ./.git-ai.yaml)")
 
 	// Add subcommands
+	rootCmd.AddCommand(branch.Cmd)
 	rootCmd.AddCommand(commit.Cmd)
 	rootCmd.AddCommand(cmdConfig.Cmd)
 }
