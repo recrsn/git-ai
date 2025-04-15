@@ -11,3 +11,7 @@
 - Support for amending existing commits with the `--amend` or `-a` flag
 - Added Git branch name generation feature with AI support
 - Added generated file detection and filtering for git diffs
+
+### Fixed
+
+- Fixed install script to correctly find and download binaries from GitHub releases

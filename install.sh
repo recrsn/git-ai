@@ -42,7 +42,7 @@ BINARY_NAME="git-ai"
 LOCAL_BINARY="$(pwd)/$BINARY_NAME"
 
 if [ -f "$LOCAL_BINARY" ]; then
-  print_step "Found local binary at $LOCAL_BINARY"
+  print_step "Installing from local binary found at $LOCAL_BINARY"
   cp "$LOCAL_BINARY" "$INSTALL_DIR/$BINARY_NAME"
   print_success "Local binary copied to $INSTALL_DIR/$BINARY_NAME"
 else
@@ -57,20 +57,74 @@ else
       print_error "Build failed. Attempting to download from GitHub releases..."
     fi
   else
-    print_step "No local binary found, downloading from GitHub releases..."
+    # Get OS and architecture in the format used by GoReleaser
+    OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+    ARCH=$(uname -m)
+    if [ "$ARCH" = "x86_64" ]; then
+      ARCH="x86_64"
+    elif [ "$ARCH" = "amd64" ]; then
+      ARCH="x86_64"
+    elif [ "$ARCH" = "arm64" ]; then
+      ARCH="arm64"
+    else
+      print_error "Unsupported architecture: $ARCH"
+      exit 1
+    fi
 
-    # Get latest release from GitHub API
-    LATEST_RELEASE_URL=$(curl -s https://api.github.com/repos/recrsn/git-ai/releases/latest | grep "browser_download_url.*$(uname -s | tr '[:upper:]' '[:lower:]')*$(uname -m)*" | cut -d : -f 2,3 | tr -d \")
+    # Convert macOS to darwin for GoReleaser naming
+    if [ "$OS" = "darwin" ]; then
+      OS_TITLE="Darwin"
+    elif [ "$OS" = "linux" ]; then
+      OS_TITLE="Linux"
+    elif [ "$OS" = "windows" ]; then
+      OS_TITLE="Windows"
+    else
+      print_error "Unsupported OS: $OS"
+      exit 1
+    fi
+
+    # Form the expected archive name
+    ARCHIVE_NAME="git-ai_${OS_TITLE}_${ARCH}"
+    if [ "$OS" = "windows" ]; then
+      ARCHIVE_EXT=".zip"
+    else
+      ARCHIVE_EXT=".tar.gz"
+    fi
+
+    # Get the download URL for the appropriate archive
+    LATEST_RELEASE_JSON=$(curl -s https://api.github.com/repos/recrsn/git-ai/releases/latest)
+    LATEST_RELEASE_URL=$(echo "$LATEST_RELEASE_JSON" | grep -o "\"browser_download_url\":[[:space:]]*\"[^\"]*${ARCHIVE_NAME}${ARCHIVE_EXT}\"" | cut -d '"' -f 4)
 
     if [ -z "$LATEST_RELEASE_URL" ]; then
-      print_error "Could not find a release for your platform ($(uname -s), $(uname -m))"
+      print_error "Could not find a release for your platform ($OS, $ARCH)"
       exit 1
     fi
 
     print_step "Downloading from: $LATEST_RELEASE_URL"
-    curl -L -o "$INSTALL_DIR/$BINARY_NAME" "$LATEST_RELEASE_URL"
+
+    # Create a temporary directory for the download
+    TMP_DIR=$(mktemp -d)
+    TMP_ARCHIVE="$TMP_DIR/archive$ARCHIVE_EXT"
+
+    # Download the archive
+    curl -L -o "$TMP_ARCHIVE" "$LATEST_RELEASE_URL"
+
+    # Extract the binary
+    if [ "$OS" = "windows" ]; then
+      # For Windows (zip file)
+      unzip -o "$TMP_ARCHIVE" -d "$TMP_DIR"
+      mv "$TMP_DIR/$BINARY_NAME.exe" "$INSTALL_DIR/$BINARY_NAME"
+    else
+      # For Unix-like systems (tar.gz)
+      tar -xzf "$TMP_ARCHIVE" -C "$TMP_DIR"
+      mv "$TMP_DIR/$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
+    fi
+
+    # Clean up the temporary directory
+    rm -rf "$TMP_DIR"
+
     chmod +x "$INSTALL_DIR/$BINARY_NAME"
-    print_success "Downloaded git-ai to $INSTALL_DIR/$BINARY_NAME"
+    print_success "Downloaded and installed git-ai to $INSTALL_DIR/$BINARY_NAME"
   fi
 fi
 
@@ -101,8 +155,6 @@ if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
       echo "echo 'export PATH=\"\$PATH:$INSTALL_DIR\"' >> ~/.profile && source ~/.profile"
       ;;
   esac
-else
-  print_success "$INSTALL_DIR is already in your PATH"
 fi
 
 print_success "Installation complete!"
