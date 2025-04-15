@@ -80,7 +80,13 @@ func executeCommit() {
 		logger.Error("Failed to start spinner: %v", err)
 	}
 
-	message := llm.GenerateCommitMessage(cfg, diff, recentCommits, useConventionalCommits, commitsWithDescriptions)
+	message, err := llm.GenerateCommitMessage(cfg, diff, recentCommits, useConventionalCommits, commitsWithDescriptions)
+	if err != nil {
+		if spinner != nil {
+			spinner.Fail("Failed to generate commit message!")
+		}
+		logger.Fatal("Failed to generate commit message: %v", err)
+	}
 
 	if spinner != nil {
 		spinner.Success("Commit message generated!")

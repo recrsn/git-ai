@@ -10,16 +10,14 @@ import (
 )
 
 // GenerateCommitMessage generates a commit message based on staged changes and commit history
-func GenerateCommitMessage(cfg config.Config, diff, recentCommits string, useConventionalCommits bool, commitsWithDescriptions bool) string {
-	// Try to use the LLM for commit message generation
+func GenerateCommitMessage(cfg config.Config, diff, recentCommits string, useConventionalCommits bool, commitsWithDescriptions bool) (string, error) {
+	// Use the LLM for commit message generation
 	message, err := generateWithLLM(cfg, diff, recentCommits, useConventionalCommits, commitsWithDescriptions)
 	if err != nil {
-		logger.Warn("Failed to generate commit message with LLM: %v\n", err)
-		logger.Warn("Falling back to simple commit message generation")
-		return generateSimpleMessage()
+		return "", fmt.Errorf("failed to generate commit message with LLM: %w", err)
 	}
 
-	return message
+	return message, nil
 }
 
 // generateWithLLM uses an LLM to generate a commit message
@@ -37,10 +35,14 @@ func generateWithLLM(cfg config.Config, diff, recentCommits string, useConventio
 	changedFiles := git.GetChangedFiles()
 
 	// Get system and user prompts
-	systemPrompt := GetSystemPrompt(useConventionalCommits, commitsWithDescriptions)
+	systemPrompt, err := GetSystemPrompt(useConventionalCommits, commitsWithDescriptions)
+	if err != nil {
+		return "", fmt.Errorf("failed to build system prompt: %w", err)
+	}
+
 	userPrompt, err := GetUserPrompt(diff, changedFiles, recentCommits)
 	if err != nil {
-		return "", fmt.Errorf("failed to build prompt: %w", err)
+		return "", fmt.Errorf("failed to build user prompt: %w", err)
 	}
 
 	// Call the LLM API
@@ -62,36 +64,6 @@ func generateWithLLM(cfg config.Config, diff, recentCommits string, useConventio
 
 	// Clean up the response
 	return strings.TrimSpace(response), nil
-}
-
-// generateSimpleMessage generates a simple commit message without using an LLM
-// This is used as a fallback when the LLM call fails
-func generateSimpleMessage() string {
-	changedFiles := git.GetChangedFiles()
-	files := strings.Split(changedFiles, "\n")
-
-	// Build a list of non-empty files for the title
-	var nonEmptyFiles []string
-	for _, file := range files {
-		if file != "" {
-			nonEmptyFiles = append(nonEmptyFiles, file)
-		}
-	}
-
-	message := "Update"
-	if len(nonEmptyFiles) > 0 {
-		message = "Update " + strings.Join(nonEmptyFiles[:min(3, len(nonEmptyFiles))], ", ")
-	}
-
-	message += "\n\n"
-	message += "Changed files:\n"
-	for _, file := range files {
-		if file != "" {
-			message += "- " + file + "\n"
-		}
-	}
-
-	return message
 }
 
 // GenerateBranchName generates a branch name based on user input and existing branches

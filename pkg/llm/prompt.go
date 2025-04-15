@@ -3,7 +3,7 @@ package llm
 import (
 	"bytes"
 	_ "embed"
-	"github.com/recrsn/git-ai/pkg/logger"
+	"fmt"
 	"strings"
 	"text/template"
 )
@@ -39,7 +39,7 @@ type BranchPromptData struct {
 }
 
 // GetSystemPrompt returns the system prompt for commit message generation
-func GetSystemPrompt(useConventionalCommits bool, commitsWithDescriptions bool) string {
+func GetSystemPrompt(useConventionalCommits bool, commitsWithDescriptions bool) (string, error) {
 	// Define template functions
 	funcMap := template.FuncMap{
 		"trimSpace": strings.TrimSpace,
@@ -48,10 +48,7 @@ func GetSystemPrompt(useConventionalCommits bool, commitsWithDescriptions bool) 
 	// Parse the template
 	tmpl, err := template.New("systemPrompt").Funcs(funcMap).Parse(commitSystemPromptTemplate)
 	if err != nil {
-		// Fallback to a simple prompt if template parsing fails
-		logger.Error("Error parsing system prompt template: %v", err)
-		logger.Warn("Falling back to default system prompt")
-		return "Generate a clear, concise commit message for the changes."
+		return "", fmt.Errorf("error parsing system prompt template: %w", err)
 	}
 
 	// Prepare data for the template
@@ -66,13 +63,10 @@ func GetSystemPrompt(useConventionalCommits bool, commitsWithDescriptions bool) 
 	// Execute the template
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, data); err != nil {
-		// Fallback to a simple prompt if execution fails
-		logger.Error("Error executing system prompt template: %v", err)
-		logger.Warn("Falling back to default system prompt")
-		return "Generate a clear, concise commit message for the changes."
+		return "", fmt.Errorf("error executing system prompt template: %w", err)
 	}
 
-	return buf.String()
+	return buf.String(), nil
 }
 
 // GetUserPrompt generates a user prompt with the given data
