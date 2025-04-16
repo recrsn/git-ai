@@ -1,6 +1,7 @@
 package branch
 
 import (
+	"errors"
 	"os"
 
 	"github.com/recrsn/git-ai/pkg/config"
@@ -67,6 +68,12 @@ func executeBranch(description string) {
 		if spinner != nil {
 			spinner.Fail("Failed to generate branch name!")
 		}
+
+		if errors.Is(err, llm.ErrLLMNotConfigured) {
+			logger.PrintMessage("LLM endpoint or API key not configured. Please run 'git ai config' to set up.")
+			os.Exit(1)
+		}
+
 		logger.Fatal("Failed to generate branch name: %v", err)
 	}
 

@@ -1,6 +1,7 @@
 package llm
 
 import (
+	"errors"
 	"fmt"
 	"github.com/recrsn/git-ai/pkg/config"
 	"github.com/recrsn/git-ai/pkg/logger"
@@ -20,10 +21,13 @@ func GenerateCommitMessage(cfg config.Config, diff, recentCommits string, useCon
 	return message, nil
 }
 
+// ErrLLMNotConfigured is returned when the LLM endpoint or API key is not configured
+var ErrLLMNotConfigured = errors.New("LLM endpoint or API key not configured")
+
 // generateWithLLM uses an LLM to generate a commit message
 func generateWithLLM(cfg config.Config, diff, recentCommits string, useConventionalCommits bool, commitsWithDescriptions bool) (string, error) {
 	if cfg.Endpoint == "" || cfg.APIKey == "" {
-		return "", fmt.Errorf("LLM endpoint or API key not configured")
+		return "", ErrLLMNotConfigured
 	}
 
 	client, err := NewClient(cfg.Endpoint, cfg.APIKey)
@@ -69,7 +73,7 @@ func generateWithLLM(cfg config.Config, diff, recentCommits string, useConventio
 // GenerateBranchName generates a branch name based on user input and existing branches
 func GenerateBranchName(cfg config.Config, request string) (string, error) {
 	if cfg.Endpoint == "" || cfg.APIKey == "" {
-		return "", fmt.Errorf("LLM endpoint or API key not configured")
+		return "", ErrLLMNotConfigured
 	}
 
 	client, err := NewClient(cfg.Endpoint, cfg.APIKey)
