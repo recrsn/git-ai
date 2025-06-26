@@ -170,7 +170,7 @@ func TestGetBranchUserPrompt(t *testing.T) {
 	remoteBranches := []string{"origin/main", "origin/dev"}
 
 	// Test the branch prompt generation function
-	prompt, err := GetBranchUserPrompt(request, localBranches, remoteBranches)
+	prompt, err := GetBranchUserPrompt(request, localBranches, remoteBranches, "")
 	if err != nil {
 		t.Errorf("Failed to generate branch user prompt: %v", err)
 	}
@@ -187,7 +187,7 @@ func TestGetBranchUserPrompt(t *testing.T) {
 	}
 
 	// Test with empty branches
-	emptyBranchPrompt, err := GetBranchUserPrompt(request, []string{}, []string{})
+	emptyBranchPrompt, err := GetBranchUserPrompt(request, []string{}, []string{}, "")
 	if err != nil {
 		t.Errorf("Failed to generate branch user prompt with empty branches: %v", err)
 	}

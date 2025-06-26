@@ -35,6 +35,13 @@ func generateWithLLM(cfg config.Config, diff, recentCommits string, useConventio
 		return "", fmt.Errorf("failed to create LLM client: %w", err)
 	}
 
+	// Process diff with summarization if needed (32k token limit)
+	processedDiff, err := ProcessDiffWithSummarization(cfg, diff, 32000)
+	if err != nil {
+		logger.Warn("Failed to process diff with summarization, using original: %v", err)
+		processedDiff = diff
+	}
+
 	// Get the changed files
 	changedFiles := git.GetChangedFiles()
 
@@ -44,7 +51,7 @@ func generateWithLLM(cfg config.Config, diff, recentCommits string, useConventio
 		return "", fmt.Errorf("failed to build system prompt: %w", err)
 	}
 
-	userPrompt, err := GetUserPrompt(diff, changedFiles, recentCommits)
+	userPrompt, err := GetUserPrompt(processedDiff, changedFiles, recentCommits)
 	if err != nil {
 		return "", fmt.Errorf("failed to build user prompt: %w", err)
 	}
@@ -81,6 +88,25 @@ func GenerateBranchName(cfg config.Config, request string) (string, error) {
 		return "", fmt.Errorf("failed to create LLM client: %w", err)
 	}
 
+	// Check if there are any changes in the working directory
+	diff := git.GetStagedDiff()
+
+	// If no staged changes, check for unstaged changes
+	if diff == "" {
+		diff = git.GetUnstagedDiff()
+	}
+
+	// Process diff with summarization if needed (32k token limit)
+	processedDiff := ""
+	if diff != "" {
+		var err error
+		processedDiff, err = ProcessDiffWithSummarization(cfg, diff, 32000)
+		if err != nil {
+			logger.Warn("Failed to process diff with summarization, using original: %v", err)
+			processedDiff = diff
+		}
+	}
+
 	// Get lists of existing branches
 	localBranches, err := git.GetLocalBranches()
 	if err != nil {
@@ -96,7 +122,7 @@ func GenerateBranchName(cfg config.Config, request string) (string, error) {
 
 	// Get system and user prompts
 	systemPrompt := GetBranchSystemPrompt()
-	userPrompt, err := GetBranchUserPrompt(request, localBranches, remoteBranches)
+	userPrompt, err := GetBranchUserPrompt(request, localBranches, remoteBranches, processedDiff)
 	if err != nil {
 		return "", fmt.Errorf("failed to build prompt: %w", err)
 	}

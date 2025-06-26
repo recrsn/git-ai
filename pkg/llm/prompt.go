@@ -22,6 +22,9 @@ var branchSystemPromptTemplate string
 //go:embed prompts/branch_user.txt
 var branchUserPromptTemplate string
 
+//go:embed prompts/diff_summary_system.txt
+var diffSummarySystemPromptTemplate string
+
 // CommitPromptData contains the data to be inserted into the commit prompt template
 type CommitPromptData struct {
 	Diff                    string
@@ -36,6 +39,7 @@ type BranchPromptData struct {
 	Request        string
 	LocalBranches  string
 	RemoteBranches string
+	Diff           string
 }
 
 // GetSystemPrompt returns the system prompt for commit message generation
@@ -109,7 +113,7 @@ func GetBranchSystemPrompt() string {
 }
 
 // GetBranchUserPrompt generates a user prompt for branch name generation
-func GetBranchUserPrompt(request string, localBranches, remoteBranches []string) (string, error) {
+func GetBranchUserPrompt(request string, localBranches, remoteBranches []string, diff string) (string, error) {
 	// Format branches as a list
 	formattedLocalBranches := formatAsList(strings.Join(localBranches, "\n"))
 	formattedRemoteBranches := formatAsList(strings.Join(remoteBranches, "\n"))
@@ -119,6 +123,7 @@ func GetBranchUserPrompt(request string, localBranches, remoteBranches []string)
 		Request:        request,
 		LocalBranches:  formattedLocalBranches,
 		RemoteBranches: formattedRemoteBranches,
+		Diff:           diff,
 	}
 
 	// Define template functions
@@ -138,6 +143,11 @@ func GetBranchUserPrompt(request string, localBranches, remoteBranches []string)
 	}
 
 	return buf.String(), nil
+}
+
+// GetDiffSummarySystemPrompt returns the system prompt for diff summarization
+func GetDiffSummarySystemPrompt() string {
+	return diffSummarySystemPromptTemplate
 }
 
 // Helper function to format a newline-separated string as a list

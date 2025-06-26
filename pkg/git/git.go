@@ -32,6 +32,19 @@ func GetStagedDiff() string {
 	return out.String()
 }
 
+// GetUnstagedDiff returns the diff of unstaged changes
+func GetUnstagedDiff() string {
+	cmd := exec.Command("git", "diff")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		logger.Error("Error getting unstaged changes: %v", err)
+		return ""
+	}
+	return out.String()
+}
+
 // GetRecentCommits returns the recent commit messages
 func GetRecentCommits() string {
 	cmd := exec.Command("git", "log", "-n", "5", "--pretty=format:%s")

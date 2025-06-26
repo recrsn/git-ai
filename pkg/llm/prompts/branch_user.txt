@@ -1,7 +1,17 @@
 Generate a Git branch name for the following request:
 
+{{if .Diff}}
+# Current changes in working directory:
+{{.Diff}}
+
+{{if .Request}}
+# Additional user request:
+{{.Request}}
+{{end}}
+{{else}}
 # User request:
 {{.Request}}
+{{end}}
 
 # Existing local branches (for context):
 {{.LocalBranches}}
