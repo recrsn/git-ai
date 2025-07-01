@@ -110,3 +110,38 @@ func ExitWithError(text string) {
 	pterm.Error.Println(text)
 	os.Exit(1)
 }
+
+// WithSpinner runs an operation with a spinner and handles success/failure
+func WithSpinner(message string, operation func() error) error {
+	spinner, err := pterm.DefaultSpinner.Start(message)
+	if err != nil {
+		return fmt.Errorf("failed to start spinner: %w", err)
+	}
+
+	err = operation()
+	if err != nil {
+		spinner.Fail(fmt.Sprintf("Failed: %v", err))
+		return err
+	}
+
+	spinner.Success("Done!")
+	return nil
+}
+
+// WithSpinnerResult runs an operation with a spinner and returns both result and error
+func WithSpinnerResult[T any](message string, operation func() (T, error)) (T, error) {
+	var zero T
+	spinner, err := pterm.DefaultSpinner.Start(message)
+	if err != nil {
+		return zero, fmt.Errorf("failed to start spinner: %w", err)
+	}
+
+	result, err := operation()
+	if err != nil {
+		spinner.Fail(fmt.Sprintf("Failed: %v", err))
+		return zero, err
+	}
+
+	spinner.Success("Done!")
+	return result, nil
+}

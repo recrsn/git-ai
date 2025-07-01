@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/recrsn/git-ai/pkg/config"
 	"github.com/recrsn/git-ai/pkg/git"
@@ -266,12 +265,11 @@ func executeConfig() {
 	}
 
 	// Save configuration
-	spinner, _ := ui.ShowSpinner("Saving configuration...")
-	if err := config.SaveConfig(configResult); err != nil {
-		spinner.Fail(fmt.Sprintf("Error saving config: %v", err))
-		os.Exit(1)
+	if err := ui.WithSpinner("Saving configuration...", func() error {
+		return config.SaveConfig(configResult)
+	}); err != nil {
+		ui.ExitWithError(fmt.Sprintf("Error saving config: %v", err))
 	}
-	spinner.Success("Configuration saved successfully!")
 
 	ui.DisplayInfo("You can now use 'git ai commit' to generate commit messages with your LLM.")
 }

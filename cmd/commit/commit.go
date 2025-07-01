@@ -6,7 +6,6 @@ import (
 
 	"github.com/recrsn/git-ai/pkg/config"
 	"github.com/recrsn/git-ai/pkg/git"
-	"github.com/recrsn/git-ai/pkg/llm"
 	"github.com/recrsn/git-ai/pkg/logger"
 	"github.com/recrsn/git-ai/pkg/ui"
 	"github.com/spf13/cobra"
@@ -39,10 +38,7 @@ func init() {
 }
 
 func executeCommit() {
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		logger.Fatal("Failed to load config: %v", err)
-	}
+	cfg := config.LoadConfigOrFatal()
 
 	// Check if there are staged changes
 	if !git.HasStagedChanges() {
@@ -75,27 +71,15 @@ func executeCommit() {
 	useConventionalCommits := shouldUseConventionalCommits()
 
 	// Generate commit message based on staged changes and history - with spinner
-	spinner, err := ui.ShowSpinner("Generating commit message with LLM...")
+	message, err := ui.WithSpinnerResult("Generating commit message with LLM...", func() (string, error) {
+		return GenerateCommitMessage(cfg, diff, recentCommits, useConventionalCommits, commitsWithDescriptions)
+	})
 	if err != nil {
-		logger.Fatal("Failed to start spinner: %v", err)
-	}
-
-	message, err := llm.GenerateCommitMessage(cfg, diff, recentCommits, useConventionalCommits, commitsWithDescriptions)
-	if err != nil {
-		if spinner != nil {
-			spinner.Fail("Failed to generate commit message!")
-		}
-
-		if errors.Is(err, llm.ErrLLMNotConfigured) {
+		if errors.Is(err, config.ErrLLMNotConfigured) {
 			ui.PrintError("LLM endpoint or API key not configured. Please run 'git ai config' to set up.")
 			os.Exit(1)
 		}
-
 		logger.Fatal("Failed to generate commit message: %v", err)
-	}
-
-	if spinner != nil {
-		spinner.Success("Commit message generated!")
 	}
 
 	// If auto-approve flag is not set, ask user to confirm or edit
@@ -165,28 +149,18 @@ func shouldUseConventionalCommits() bool {
 
 // saveCommitFormatPreference saves the user's preference for commit format to git config
 func saveCommitFormatPreference(useConventional bool) {
-	configKey := "git-ai.conventionalCommits"
 	value := "false"
 	if useConventional {
 		value = "true"
 	}
-
-	err := git.SetConfig(configKey, value)
-	if err != nil {
-		logger.Warn("Could not save commit format preference: %v", err)
-	}
+	git.SaveConfigPreference("git-ai.conventionalCommits", value)
 }
 
 // saveCommitDescriptionPreference saves the user's preference for commit description format to git config
 func saveCommitDescriptionPreference(useDescriptions bool) {
-	configKey := "git-ai.commitsWithDescriptions"
 	value := "false"
 	if useDescriptions {
 		value = "true"
 	}
-
-	err := git.SetConfig(configKey, value)
-	if err != nil {
-		logger.Warn("Could not save commit description preference: %v", err)
-	}
+	git.SaveConfigPreference("git-ai.commitsWithDescriptions", value)
 }

@@ -1,7 +1,8 @@
-package llm
+package git
 
 import (
 	"fmt"
+	"github.com/recrsn/git-ai/pkg/llm"
 	"regexp"
 	"strings"
 	"sync"
@@ -68,39 +69,6 @@ func ParseDiffByFile(diff string) []FileDiff {
 	return files
 }
 
-// SummarizeDiff creates a concise summary of changes in a diff
-func SummarizeDiff(cfg config.Config, fileDiff FileDiff) (string, error) {
-	if cfg.Endpoint == "" || cfg.APIKey == "" {
-		return "", ErrLLMNotConfigured
-	}
-
-	client, err := NewClient(cfg.Endpoint, cfg.APIKey)
-	if err != nil {
-		return "", fmt.Errorf("failed to create LLM client: %w", err)
-	}
-
-	systemPrompt := GetDiffSummarySystemPrompt()
-	userPrompt := fmt.Sprintf("Summarize the changes in this diff:\n\n```diff\n%s\n```", fileDiff.Content)
-
-	messages := []Message{
-		{
-			Role:    "system",
-			Content: systemPrompt,
-		},
-		{
-			Role:    "user",
-			Content: userPrompt,
-		},
-	}
-
-	response, err := client.ChatCompletion(cfg.Model, messages)
-	if err != nil {
-		return "", fmt.Errorf("failed to get diff summary: %w", err)
-	}
-
-	return strings.TrimSpace(response), nil
-}
-
 // createFileBatches groups files into batches where each batch doesn't exceed token limit
 func createFileBatches(fileDiffs []FileDiff, tokenLimit int) [][]FileDiff {
 	var batches [][]FileDiff
@@ -143,10 +111,10 @@ func createFileBatches(fileDiffs []FileDiff, tokenLimit int) [][]FileDiff {
 // summarizeBatch summarizes a batch of file diffs together
 func summarizeBatch(cfg config.Config, fileBatch []FileDiff) (string, error) {
 	if cfg.Endpoint == "" || cfg.APIKey == "" {
-		return "", ErrLLMNotConfigured
+		return "", config.ErrLLMNotConfigured
 	}
 
-	client, err := NewClient(cfg.Endpoint, cfg.APIKey)
+	client, err := llm.NewClient(cfg.Endpoint, cfg.APIKey)
 	if err != nil {
 		return "", fmt.Errorf("failed to create LLM client: %w", err)
 	}
@@ -160,10 +128,10 @@ func summarizeBatch(cfg config.Config, fileBatch []FileDiff) (string, error) {
 		combinedContent.WriteString(fileDiff.Content)
 	}
 
-	systemPrompt := GetDiffSummarySystemPrompt()
+	systemPrompt := llm.GetDiffSummarySystemPrompt()
 	userPrompt := fmt.Sprintf("Summarize the changes in this diff:\n\n```diff\n%s\n```", combinedContent.String())
 
-	messages := []Message{
+	messages := []llm.Message{
 		{
 			Role:    "system",
 			Content: systemPrompt,

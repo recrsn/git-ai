@@ -27,7 +27,7 @@ func PrintError(message string) {
 	fmt.Printf("❌ %s\n", message)
 }
 
-func PrintErrorf(format string, arga ...interface{}) {
-	message := fmt.Sprintf(format, arga...)
+func PrintErrorf(format string, args ...interface{}) {
+	message := fmt.Sprintf(format, args...)
 	fmt.Printf("❌ %s\n", message)
 }

@@ -303,3 +303,11 @@ func GetLatestCommitHash() (string, error) {
 	}
 	return strings.TrimSpace(out.String()), nil
 }
+
+// SaveConfigPreference saves a git config preference with proper error logging
+func SaveConfigPreference(key, value string) {
+	err := SetConfig(key, value)
+	if err != nil {
+		logger.Warn("Could not save %s preference: %v", key, err)
+	}
+}

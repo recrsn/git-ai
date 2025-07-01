@@ -3,91 +3,29 @@ package branch
 import (
 	"errors"
 	"fmt"
-	"os"
-	"strings"
-
 	"github.com/recrsn/git-ai/pkg/config"
 	"github.com/recrsn/git-ai/pkg/git"
 	"github.com/recrsn/git-ai/pkg/llm"
 	"github.com/recrsn/git-ai/pkg/logger"
 	"github.com/recrsn/git-ai/pkg/ui"
-	"github.com/spf13/cobra"
+	"os"
+	"strings"
 )
-
-var (
-	autoApprove bool
-	description string
-)
-
-// Cmd represents the branch command
-var Cmd = &cobra.Command{
-	Use:   "branch [description]",
-	Short: "Generate a meaningful Git branch name",
-	Long:  `Analyzes your input and existing branches to generate a meaningful branch name.`,
-	Args:  cobra.MaximumNArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		// If description is provided as an argument, use it
-		if len(args) > 0 {
-			description = args[0]
-		}
-
-		// Check if there are any changes in the working directory
-		diff := git.GetStagedDiff()
-		if diff == "" {
-			diff = git.GetUnstagedDiff()
-		}
-
-		// If no description is provided and no diff is available, prompt for one
-		if description == "" && diff == "" {
-			var err error
-			description, err = ui.PromptForInput("Enter a brief description of your branch:", "")
-			if err != nil {
-				logger.Fatal("Error prompting for description: %v", err)
-			}
-			if description == "" {
-				ui.PrintError("Description cannot be empty.")
-				os.Exit(1)
-			}
-		}
-
-		executeBranch(description, diff)
-	},
-}
-
-func init() {
-	Cmd.Flags().BoolVar(&autoApprove, "auto", false, "Automatically approve the generated branch name without prompting")
-	Cmd.Flags().StringVarP(&description, "description", "d", "", "Brief description of the branch purpose")
-}
 
 func executeBranch(description, diff string) {
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		logger.Fatal("Failed to load config: %v", err)
-	}
+	cfg := config.LoadConfigOrFatal()
 
 	// Generate branch name - with spinner
-	spinner, err := ui.ShowSpinner("Generating branch name with LLM...")
+	branchName, err := ui.WithSpinnerResult("Generating branch name with LLM...", func() (string, error) {
+		return generateBranchNameWithDiff(cfg, description, diff)
+	})
 	if err != nil {
-		logger.Error("Failed to start spinner: %v", err)
-	}
-
-	branchName, err := generateBranchNameWithDiff(cfg, description, diff)
-	if err != nil {
-		if spinner != nil {
-			spinner.Fail("Failed to generate branch name!")
-		}
-
-		if errors.Is(err, llm.ErrLLMNotConfigured) {
+		if errors.Is(err, config.ErrLLMNotConfigured) {
 			ui.PrintError("LLM endpoint or API key not configured. Please run 'git ai config' to set up.")
 			os.Exit(1)
 		}
-
 		ui.PrintErrorf("Failed to generate branch name: %v", err)
 		os.Exit(1)
-	}
-
-	if spinner != nil {
-		spinner.Success("Branch name generated!")
 	}
 
 	// If auto-approve flag is not set, ask user to confirm or edit
@@ -140,7 +78,7 @@ func executeBranch(description, diff string) {
 // generateBranchNameWithDiff generates a branch name based on user input, diff, and existing branches
 func generateBranchNameWithDiff(cfg config.Config, request, diff string) (string, error) {
 	if cfg.Endpoint == "" || cfg.APIKey == "" {
-		return "", llm.ErrLLMNotConfigured
+		return "", config.ErrLLMNotConfigured
 	}
 
 	client, err := llm.NewClient(cfg.Endpoint, cfg.APIKey)
@@ -153,7 +91,7 @@ func generateBranchNameWithDiff(cfg config.Config, request, diff string) (string
 	isSummarized := false
 	if diff != "" {
 		var err error
-		processedDiff, isSummarized, err = llm.ProcessDiffWithSummarization(cfg, diff, 32000)
+		processedDiff, isSummarized, err = git.ProcessDiffWithSummarization(cfg, diff, 32000)
 		if err != nil {
 			logger.Warn("Failed to process diff with summarization, using original: %v", err)
 			processedDiff = diff

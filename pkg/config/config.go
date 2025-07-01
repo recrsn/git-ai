@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -187,3 +188,14 @@ func SaveConfig(config Config) error {
 
 	return nil
 }
+
+// LoadConfigOrFatal loads the configuration and exits with a fatal error if it fails
+func LoadConfigOrFatal() Config {
+	cfg, err := LoadConfig()
+	if err != nil {
+		logger.Fatal("Failed to load config: %v", err)
+	}
+	return cfg
+}
+
+var ErrLLMNotConfigured = errors.New("LLM endpoint or API key not configured")
