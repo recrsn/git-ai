@@ -11,18 +11,21 @@ import (
 )
 
 var (
-	debug      bool
 	configPath string
+	verbose    int
 
 	rootCmd = &cobra.Command{
 		Use:   "git-ai",
 		Short: "Git AI - LLM-powered Git extension",
 		Long:  `Git AI enhances your Git workflow with AI-powered features like automatic commit message generation.`,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			// Set up logging level based on debug flag
-			if debug {
-				logger.SetLevel(logger.DEBUG)
-				logger.Debug("Debug logging enabled")
+			logger.SetLevel(verbose)
+
+			logger.Debug("Git AI session started")
+
+			// Set up logging level based on verbose flags
+			if verbose > 0 {
+				logger.Debug("Verbose logging enabled (level %d)", verbose)
 			}
 
 			// If config path is explicitly provided, set it
@@ -36,8 +39,8 @@ var (
 
 func init() {
 	// Add global flags
-	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Enable debug logging")
 	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "Path to config file (default is $HOME/.git-ai.yaml and ./.git-ai.yaml)")
+	rootCmd.PersistentFlags().CountVarP(&verbose, "verbose", "v", "Enable verbose output (-v for info, -vv for debug)")
 
 	// Add subcommands
 	rootCmd.AddCommand(branch.Cmd)

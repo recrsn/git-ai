@@ -47,3 +47,64 @@ Follow these rules:
 {{end}}
 
 IMPORTANT: Avoid including file names or paths unless they are critical to understanding the context of the change.
+
+## Examples:
+
+**Example 1 - Bug fix with conventional commits:**
+Input:
+```diff
+diff --git a/src/auth.js b/src/auth.js
+index 1234567..abcdefg 100644
+--- a/src/auth.js
++++ b/src/auth.js
+@@ -15,7 +15,7 @@ function validateUser(token) {
+   }
+
+-  return token.exp > Date.now();
++  return token.exp > Date.now() / 1000;
+ }
+```
+
+{{if .UseConventional}}Output: `fix(auth): correct token expiration validation`{{else}}Output: `Fix token expiration validation in authentication`{{end}}
+
+**Example 2 - New feature:**
+Input:
+```diff
+diff --git a/src/api/users.js b/src/api/users.js
+index 2345678..bcdefgh 100644
+--- a/src/api/users.js
++++ b/src/api/users.js
+@@ -10,6 +10,15 @@ router.get('/users', async (req, res) => {
+   res.json(users);
+ });
+
++router.get('/users/search', async (req, res) => {
++  const { query } = req.query;
++  const users = await User.find({
++    name: { $regex: query, $options: 'i' }
++  });
++  res.json(users);
++});
+```
+
+{{if .UseConventional}}Output: `feat(api): add user search endpoint with regex matching`{{else}}Output: `Add user search endpoint with regex matching`{{end}}
+
+**Example 3 - Documentation update:**
+Input:
+```diff
+diff --git a/README.md b/README.md
+index 3456789..cdefghi 100644
+--- a/README.md
++++ b/README.md
+@@ -25,6 +25,12 @@ npm install
+ npm start
+ ```
+
++## Configuration
++
++Copy `.env.example` to `.env` and configure:
++- `DATABASE_URL`: Your database connection string
++- `JWT_SECRET`: Secret key for JWT tokens
+```
+
+{{if .UseConventional}}Output: `docs: add environment configuration instructions`{{else}}Output: `Add environment configuration instructions`{{end}}

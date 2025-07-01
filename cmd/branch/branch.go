@@ -2,7 +2,9 @@ package branch
 
 import (
 	"errors"
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/recrsn/git-ai/pkg/config"
 	"github.com/recrsn/git-ai/pkg/git"
@@ -29,20 +31,26 @@ var Cmd = &cobra.Command{
 			description = args[0]
 		}
 
-		// If no description is provided, prompt for one
-		if description == "" {
+		// Check if there are any changes in the working directory
+		diff := git.GetStagedDiff()
+		if diff == "" {
+			diff = git.GetUnstagedDiff()
+		}
+
+		// If no description is provided and no diff is available, prompt for one
+		if description == "" && diff == "" {
 			var err error
 			description, err = ui.PromptForInput("Enter a brief description of your branch:", "")
 			if err != nil {
 				logger.Fatal("Error prompting for description: %v", err)
 			}
 			if description == "" {
-				logger.Error("Description cannot be empty.")
+				ui.PrintError("Description cannot be empty.")
 				os.Exit(1)
 			}
 		}
 
-		executeBranch(description)
+		executeBranch(description, diff)
 	},
 }
 
@@ -51,7 +59,7 @@ func init() {
 	Cmd.Flags().StringVarP(&description, "description", "d", "", "Brief description of the branch purpose")
 }
 
-func executeBranch(description string) {
+func executeBranch(description, diff string) {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		logger.Fatal("Failed to load config: %v", err)
@@ -63,18 +71,19 @@ func executeBranch(description string) {
 		logger.Error("Failed to start spinner: %v", err)
 	}
 
-	branchName, err := llm.GenerateBranchName(cfg, description)
+	branchName, err := generateBranchNameWithDiff(cfg, description, diff)
 	if err != nil {
 		if spinner != nil {
 			spinner.Fail("Failed to generate branch name!")
 		}
 
 		if errors.Is(err, llm.ErrLLMNotConfigured) {
-			logger.PrintMessage("LLM endpoint or API key not configured. Please run 'git ai config' to set up.")
+			ui.PrintError("LLM endpoint or API key not configured. Please run 'git ai config' to set up.")
 			os.Exit(1)
 		}
 
-		logger.Fatal("Failed to generate branch name: %v", err)
+		ui.PrintErrorf("Failed to generate branch name: %v", err)
+		os.Exit(1)
 	}
 
 	if spinner != nil {
@@ -107,10 +116,10 @@ func executeBranch(description string) {
 			}
 			proceed = true
 		case "Print name only":
-			logger.PrintMessage(branchName)
+			ui.PrintMessage(branchName)
 			os.Exit(0)
 		case "Cancel":
-			logger.PrintMessage("Branch creation cancelled.")
+			ui.PrintMessage("Branch creation cancelled.")
 			os.Exit(0)
 		}
 	} else {
@@ -124,6 +133,104 @@ func executeBranch(description string) {
 			logger.Fatal("Failed to create branch: %v", err)
 		}
 
-		logger.PrintMessagef("Branch '%s' created successfully!", branchName)
+		ui.PrintMessagef("Branch '%s' created successfully!", branchName)
 	}
+}
+
+// generateBranchNameWithDiff generates a branch name based on user input, diff, and existing branches
+func generateBranchNameWithDiff(cfg config.Config, request, diff string) (string, error) {
+	if cfg.Endpoint == "" || cfg.APIKey == "" {
+		return "", llm.ErrLLMNotConfigured
+	}
+
+	client, err := llm.NewClient(cfg.Endpoint, cfg.APIKey)
+	if err != nil {
+		return "", fmt.Errorf("failed to create LLM client: %w", err)
+	}
+
+	// Process diff with summarization if needed (32k token limit)
+	processedDiff := ""
+	isSummarized := false
+	if diff != "" {
+		var err error
+		processedDiff, isSummarized, err = llm.ProcessDiffWithSummarization(cfg, diff, 32000)
+		if err != nil {
+			logger.Warn("Failed to process diff with summarization, using original: %v", err)
+			processedDiff = diff
+			isSummarized = false
+		}
+	}
+
+	// Get lists of existing branches
+	localBranches, err := git.GetLocalBranches()
+	if err != nil {
+		logger.Warn("Failed to get local branches: %v", err)
+		localBranches = []string{}
+	}
+
+	remoteBranches, err := git.GetRemoteBranches()
+	if err != nil {
+		logger.Warn("Failed to get remote branches: %v", err)
+		remoteBranches = []string{}
+	}
+
+	// Get system and user prompts
+	systemPrompt, err := llm.GetBranchSystemPrompt(isSummarized)
+	if err != nil {
+		return "", fmt.Errorf("failed to build system prompt: %w", err)
+	}
+
+	userPrompt, err := llm.GetBranchUserPrompt(request, localBranches, remoteBranches, processedDiff)
+	if err != nil {
+		return "", fmt.Errorf("failed to build user prompt: %w", err)
+	}
+
+	// Call the LLM API
+	messages := []llm.Message{
+		{
+			Role:    "system",
+			Content: systemPrompt,
+		},
+		{
+			Role:    "user",
+			Content: userPrompt,
+		},
+	}
+
+	response, err := client.ChatCompletion(cfg.Model, messages)
+	if err != nil {
+		return "", fmt.Errorf("failed to get completion: %w", err)
+	}
+
+	// Clean up the response
+	branchName := strings.TrimSpace(response)
+
+	// Ensure it doesn't contain any invalid characters
+	branchName = sanitizeBranchName(branchName)
+
+	return branchName, nil
+}
+
+// sanitizeBranchName ensures the branch name follows Git conventions
+func sanitizeBranchName(name string) string {
+	// Replace spaces with hyphens
+	name = strings.ReplaceAll(name, " ", "-")
+
+	// Remove any Git-unfriendly characters
+	name = strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '/' || r == '_' || r == '.' {
+			return r
+		}
+		return '-'
+	}, name)
+
+	// Convert multiple hyphens to a single one
+	for strings.Contains(name, "--") {
+		name = strings.ReplaceAll(name, "--", "-")
+	}
+
+	// Trim hyphens from the start and end
+	name = strings.Trim(name, "-")
+
+	return name
 }

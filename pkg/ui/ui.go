@@ -93,15 +93,6 @@ func PromptForInput(promptText string, defaultValue string) (string, error) {
 		Show(promptText)
 }
 
-// PromptForMultilineInput shows a multiline text input prompt
-func PromptForMultilineInput(promptText string, defaultValue string) (string, error) {
-	return pterm.DefaultInteractiveTextInput.
-		WithMultiLine().
-		WithDefaultValue(defaultValue).
-		WithTextStyle(pterm.NewStyle(pterm.FgLightCyan)).
-		Show(promptText)
-}
-
 // PromptForPassword shows a masked text input prompt for passwords
 func PromptForPassword(promptText string) (string, error) {
 	return pterm.DefaultInteractiveTextInput.

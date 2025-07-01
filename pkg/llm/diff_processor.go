@@ -101,11 +101,94 @@ func SummarizeDiff(cfg config.Config, fileDiff FileDiff) (string, error) {
 	return strings.TrimSpace(response), nil
 }
 
+// createFileBatches groups files into batches where each batch doesn't exceed token limit
+func createFileBatches(fileDiffs []FileDiff, tokenLimit int) [][]FileDiff {
+	var batches [][]FileDiff
+	var currentBatch []FileDiff
+	currentBatchTokens := 0
+
+	for _, fileDiff := range fileDiffs {
+		fileTokens := EstimateTokens(fileDiff.Content)
+
+		// If single file exceeds limit, put it in its own batch
+		if fileTokens > tokenLimit {
+			if len(currentBatch) > 0 {
+				batches = append(batches, currentBatch)
+				currentBatch = nil
+				currentBatchTokens = 0
+			}
+			batches = append(batches, []FileDiff{fileDiff})
+			continue
+		}
+
+		// If adding this file would exceed limit, start new batch
+		if currentBatchTokens+fileTokens > tokenLimit && len(currentBatch) > 0 {
+			batches = append(batches, currentBatch)
+			currentBatch = nil
+			currentBatchTokens = 0
+		}
+
+		currentBatch = append(currentBatch, fileDiff)
+		currentBatchTokens += fileTokens
+	}
+
+	// Add final batch if not empty
+	if len(currentBatch) > 0 {
+		batches = append(batches, currentBatch)
+	}
+
+	return batches
+}
+
+// summarizeBatch summarizes a batch of file diffs together
+func summarizeBatch(cfg config.Config, fileBatch []FileDiff) (string, error) {
+	if cfg.Endpoint == "" || cfg.APIKey == "" {
+		return "", ErrLLMNotConfigured
+	}
+
+	client, err := NewClient(cfg.Endpoint, cfg.APIKey)
+	if err != nil {
+		return "", fmt.Errorf("failed to create LLM client: %w", err)
+	}
+
+	// Combine all files in batch into single diff
+	var combinedContent strings.Builder
+	for i, fileDiff := range fileBatch {
+		if i > 0 {
+			combinedContent.WriteString("\n\n")
+		}
+		combinedContent.WriteString(fileDiff.Content)
+	}
+
+	systemPrompt := GetDiffSummarySystemPrompt()
+	userPrompt := fmt.Sprintf("Summarize the changes in this diff:\n\n```diff\n%s\n```", combinedContent.String())
+
+	messages := []Message{
+		{
+			Role:    "system",
+			Content: systemPrompt,
+		},
+		{
+			Role:    "user",
+			Content: userPrompt,
+		},
+	}
+
+	response, err := client.ChatCompletion(cfg.Model, messages)
+	if err != nil {
+		return "", fmt.Errorf("failed to get batch summary: %w", err)
+	}
+
+	summary := strings.TrimSpace(response)
+	return summary, nil
+}
+
 // ProcessDiffWithSummarization handles large diffs by summarizing files in parallel
-func ProcessDiffWithSummarization(cfg config.Config, diff string, tokenLimit int) (string, error) {
+// Returns the processed diff, a boolean indicating if summarization occurred, and any error
+func ProcessDiffWithSummarization(cfg config.Config, diff string, tokenLimit int) (string, bool, error) {
 	// If diff is small enough, return as-is
 	if EstimateTokens(diff) <= tokenLimit {
-		return diff, nil
+		return diff, false, nil
 	}
 
 	logger.Debug("Diff exceeds token limit (%d tokens estimated), summarizing by file", EstimateTokens(diff))
@@ -113,36 +196,48 @@ func ProcessDiffWithSummarization(cfg config.Config, diff string, tokenLimit int
 	// Parse diff by file
 	fileDiffs := ParseDiffByFile(diff)
 	if len(fileDiffs) == 0 {
-		return diff, nil // Return original if parsing fails
+		return diff, false, nil // Return original if parsing fails
 	}
 
-	// Process files in parallel
-	var wg sync.WaitGroup
-	summaries := make([]string, len(fileDiffs))
-	errors := make([]error, len(fileDiffs))
+	// Create batches of files to process together
+	batches := createFileBatches(fileDiffs, tokenLimit)
 
-	for i, fileDiff := range fileDiffs {
+	// Process batches in parallel with limited concurrency
+	semaphore := make(chan struct{}, 4) // Limit to 4 concurrent requests
+	var wg sync.WaitGroup
+	summaries := make([]string, len(batches))
+	errors := make([]error, len(batches))
+
+	for i, batch := range batches {
 		wg.Add(1)
-		go func(index int, fd FileDiff) {
+		go func(index int, fileBatch []FileDiff) {
 			defer wg.Done()
 
-			summary, err := SummarizeDiff(cfg, fd)
+			// Acquire semaphore
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }() // Release semaphore
+
+			summary, err := summarizeBatch(cfg, fileBatch)
 			if err != nil {
-				logger.Warn("Failed to summarize diff for %s: %v", fd.Path, err)
+				logger.Warn("Failed to summarize batch %d: %v", index, err)
 				errors[index] = err
 				// Use truncated version as fallback
-				content := fd.Content
-				if len(content) > 500 {
-					content = content[:500] + "... (truncated)"
+				var fallbackParts []string
+				for _, fd := range fileBatch {
+					content := fd.Content
+					if len(content) > 500 {
+						content = content[:500] + "... (truncated)"
+					}
+					fallbackParts = append(fallbackParts, fmt.Sprintf("File: %s\n%s", fd.Path, content))
 				}
-				summaries[index] = fmt.Sprintf("File: %s\n%s", fd.Path, content)
+				summaries[index] = strings.Join(fallbackParts, "\n\n")
 			} else if summary == "MINOR CHANGES ONLY" {
 				// Skip formatting-only changes
 				summaries[index] = ""
 			} else {
-				summaries[index] = fmt.Sprintf("File: %s\nSummary: %s", fd.Path, summary)
+				summaries[index] = summary
 			}
-		}(i, fileDiff)
+		}(i, batch)
 	}
 
 	wg.Wait()
@@ -157,7 +252,7 @@ func ProcessDiffWithSummarization(cfg config.Config, diff string, tokenLimit int
 
 	// If all changes were formatting-only, return a simple message
 	if len(filteredSummaries) == 0 {
-		return "Minor formatting and refactoring changes with no functional impact.", nil
+		return "Minor formatting and refactoring changes with no functional impact.", true, nil
 	}
 
 	// Combine summaries
@@ -165,5 +260,5 @@ func ProcessDiffWithSummarization(cfg config.Config, diff string, tokenLimit int
 
 	logger.Debug("Summarized diff: %d tokens (from %d tokens)", EstimateTokens(result), EstimateTokens(diff))
 
-	return result, nil
+	return result, true, nil
 }

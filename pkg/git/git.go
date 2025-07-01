@@ -290,3 +290,16 @@ func CreateBranch(name string) error {
 	}
 	return nil
 }
+
+// GetLatestCommitHash returns the hash of the most recent commit
+func GetLatestCommitHash() (string, error) {
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		logger.Error("Error getting latest commit hash: %v", err)
+		return "", fmt.Errorf("error getting latest commit hash: %v", err)
+	}
+	return strings.TrimSpace(out.String()), nil
+}

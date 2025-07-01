@@ -15,3 +15,25 @@ Follow these rules:
 Based on the user's request and existing branches (for context), generate a suitable branch name.
 
 Respond ONLY with the branch name, nothing else.
+
+## Examples:
+
+**Example 1 - Simple feature request:**
+User request: "Add login functionality"
+Existing branches: main, develop, feature/auth-system
+Output: `feature/add-login`
+
+**Example 2 - Bug fix:**
+User request: "Fix memory leak in image processing"
+Existing branches: main, bugfix/ui-crash, hotfix/auth-token
+Output: `bugfix/image-memory-leak`
+
+**Example 3 - No prefix convention:**
+User request: "Implement dark mode toggle"
+Existing branches: main, user-profile, search-improvements
+Output: `dark-mode-toggle`
+
+**Example 4 - Issue-based naming:**
+User request: "Resolve issue #123 about slow database queries"
+Existing branches: main, issue-456-login-fix
+Output: `issue-123-slow-queries`

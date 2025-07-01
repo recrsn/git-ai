@@ -47,9 +47,9 @@ func executeCommit() {
 	// Check if there are staged changes
 	if !git.HasStagedChanges() {
 		if amendCommit {
-			logger.PrintMessage("No staged changes found. Will amend the previous commit message only.")
+			ui.PrintMessage("No staged changes found. Will amend the previous commit message only.")
 		} else {
-			logger.Error("No staged changes found. Please stage your changes with 'git add' first.")
+			ui.PrintErrorf("No staged changes found. Please stage your changes with 'git add' first.")
 			os.Exit(1)
 		}
 	}
@@ -65,8 +65,7 @@ func executeCommit() {
 	// Get the staged changes diff, filtering out generated files
 	diff := git.GetStagedDiffFiltered()
 	if diff == "" {
-		logger.Error("Could not retrieve diff of staged changes.")
-		os.Exit(1)
+		logger.Fatal("Could not retrieve diff of staged changes.")
 	}
 
 	// Get recent commit history
@@ -78,7 +77,7 @@ func executeCommit() {
 	// Generate commit message based on staged changes and history - with spinner
 	spinner, err := ui.ShowSpinner("Generating commit message with LLM...")
 	if err != nil {
-		logger.Error("Failed to start spinner: %v", err)
+		logger.Fatal("Failed to start spinner: %v", err)
 	}
 
 	message, err := llm.GenerateCommitMessage(cfg, diff, recentCommits, useConventionalCommits, commitsWithDescriptions)
@@ -88,7 +87,7 @@ func executeCommit() {
 		}
 
 		if errors.Is(err, llm.ErrLLMNotConfigured) {
-			logger.PrintMessage("LLM endpoint or API key not configured. Please run 'git ai config' to set up.")
+			ui.PrintError("LLM endpoint or API key not configured. Please run 'git ai config' to set up.")
 			os.Exit(1)
 		}
 
@@ -124,10 +123,20 @@ func executeCommit() {
 		logger.Fatal("Failed to create commit: %v", err)
 	}
 
-	if amendCommit {
-		logger.PrintMessage("Commit amended successfully!")
+	// Get the commit hash for logging
+	commitHash, err := git.GetLatestCommitHash()
+	if err != nil {
+		logger.Warn("Failed to get commit hash for logging: %v", err)
 	} else {
-		logger.PrintMessage("Commit created successfully!")
+		if commitHash != "" {
+			logger.Debug("Commit created: %s", commitHash)
+		}
+	}
+
+	if amendCommit {
+		ui.PrintSuccess("Commit amended successfully!")
+	} else {
+		ui.PrintSuccess("Commit created successfully!")
 	}
 }
 

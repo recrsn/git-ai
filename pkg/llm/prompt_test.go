@@ -58,7 +58,7 @@ func TestGetUserPrompt(t *testing.T) {
 
 func TestGetSystemPrompt(t *testing.T) {
 	// Test conventional format with descriptions
-	conventionalPromptWithDesc, err := GetSystemPrompt(true, true)
+	conventionalPromptWithDesc, err := GetSystemPrompt(true, true, false)
 	if err != nil {
 		t.Errorf("Failed to generate system prompt: %v", err)
 	}
@@ -74,7 +74,7 @@ func TestGetSystemPrompt(t *testing.T) {
 	}
 
 	// Test conventional format without descriptions (one-liner)
-	conventionalPromptOneLiner, err := GetSystemPrompt(true, false)
+	conventionalPromptOneLiner, err := GetSystemPrompt(true, false, false)
 	if err != nil {
 		t.Errorf("Failed to generate system prompt: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestGetSystemPrompt(t *testing.T) {
 	}
 
 	// Test standard format with descriptions
-	standardPromptWithDesc, err := GetSystemPrompt(false, true)
+	standardPromptWithDesc, err := GetSystemPrompt(false, true, false)
 	if err != nil {
 		t.Errorf("Failed to generate system prompt: %v", err)
 	}
@@ -96,7 +96,7 @@ func TestGetSystemPrompt(t *testing.T) {
 	}
 
 	// Test standard format without descriptions (one-liner)
-	standardPromptOneLiner, err := GetSystemPrompt(false, false)
+	standardPromptOneLiner, err := GetSystemPrompt(false, false, false)
 	if err != nil {
 		t.Errorf("Failed to generate system prompt: %v", err)
 	}
@@ -152,7 +152,10 @@ func TestFormatAsList(t *testing.T) {
 
 func TestGetBranchSystemPrompt(t *testing.T) {
 	// Test that the branch system prompt is not empty
-	branchSystemPrompt := GetBranchSystemPrompt()
+	branchSystemPrompt, err := GetBranchSystemPrompt(false)
+	if err != nil {
+		t.Errorf("Failed to generate branch system prompt: %v", err)
+	}
 	if branchSystemPrompt == "" {
 		t.Errorf("Expected branch system prompt to not be empty")
 	}

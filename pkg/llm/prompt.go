@@ -43,7 +43,7 @@ type BranchPromptData struct {
 }
 
 // GetSystemPrompt returns the system prompt for commit message generation
-func GetSystemPrompt(useConventionalCommits bool, commitsWithDescriptions bool) (string, error) {
+func GetSystemPrompt(useConventionalCommits bool, commitsWithDescriptions bool, isSummarized bool) (string, error) {
 	// Define template functions
 	funcMap := template.FuncMap{
 		"trimSpace": strings.TrimSpace,
@@ -59,9 +59,11 @@ func GetSystemPrompt(useConventionalCommits bool, commitsWithDescriptions bool) 
 	data := struct {
 		UseConventional         bool
 		CommitsWithDescriptions bool
+		IsSummarized            bool
 	}{
 		UseConventional:         useConventionalCommits,
 		CommitsWithDescriptions: commitsWithDescriptions,
+		IsSummarized:            isSummarized,
 	}
 
 	// Execute the template
@@ -108,8 +110,32 @@ func GetUserPrompt(diff, changedFiles, recentCommits string) (string, error) {
 }
 
 // GetBranchSystemPrompt returns the system prompt for branch name generation
-func GetBranchSystemPrompt() string {
-	return branchSystemPromptTemplate
+func GetBranchSystemPrompt(isSummarized bool) (string, error) {
+	// Define template functions
+	funcMap := template.FuncMap{
+		"trimSpace": strings.TrimSpace,
+	}
+
+	// Parse the template
+	tmpl, err := template.New("branchSystemPrompt").Funcs(funcMap).Parse(branchSystemPromptTemplate)
+	if err != nil {
+		return "", fmt.Errorf("error parsing branch system prompt template: %w", err)
+	}
+
+	// Prepare data for the template
+	data := struct {
+		IsSummarized bool
+	}{
+		IsSummarized: isSummarized,
+	}
+
+	// Execute the template
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return "", fmt.Errorf("error executing branch system prompt template: %w", err)
+	}
+
+	return buf.String(), nil
 }
 
 // GetBranchUserPrompt generates a user prompt for branch name generation
