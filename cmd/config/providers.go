@@ -24,16 +24,28 @@ var availableProviders = []string{
 
 var providers = map[string]providerInfo{
 	OpenAIProvider: {
-		name:            "OpenAI",
-		endpoint:        "https://api.openai.com/v1",
-		availableModels: []string{"gpt-3.5-turbo", "gpt-4", "gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "custom"},
-		defaultModel:    "gpt-4o-mini",
+		name:     "OpenAI",
+		endpoint: "https://api.openai.com/v1",
+		availableModels: []string{
+			"gpt-5",
+			"gpt-5-mini",
+			"gpt-5-nano",
+			"custom",
+		},
+		defaultModel: "gpt-5-mini",
 	},
 	AnthropicProvider: {
-		name:            "Anthropic",
-		endpoint:        "https://api.anthropic.com/v1",
-		availableModels: []string{"claude-3-7-sonnet-latest", "claude-3-5-sonnet-latest", "claude-3-5-haiku-latest", "custom"},
-		defaultModel:    "claude-3-5-haiku-latest",
+		name:     "Anthropic",
+		endpoint: "https://api.anthropic.com",
+		availableModels: []string{
+			"claude-sonnet-4-5",
+			"claude-haiku-4-5",
+			"claude-sonnet-4",
+			"claude-3-7-sonnet-latest",
+			"claude-3-5-haiku-latest",
+			"custom",
+		},
+		defaultModel: "claude-haiku-4-5",
 	},
 	OllamaProvider: {
 		name:            "Ollama",

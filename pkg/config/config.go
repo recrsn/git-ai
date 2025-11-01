@@ -147,7 +147,26 @@ func LoadConfig() (Config, error) {
 		return DefaultConfig(), fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
+	// Set provider-specific default endpoint if not specified
+	if config.Endpoint == "" {
+		config.Endpoint = GetDefaultEndpoint(config.Provider)
+	}
+
 	return config, nil
+}
+
+// GetDefaultEndpoint returns the default endpoint for a given provider
+func GetDefaultEndpoint(provider string) string {
+	switch provider {
+	case "anthropic":
+		return "https://api.anthropic.com"
+	case "openai":
+		return "https://api.openai.com/v1"
+	case "ollama":
+		return "http://localhost:11434/v1"
+	default:
+		return ""
+	}
 }
 
 // SaveConfig saves the configuration to the user's home directory

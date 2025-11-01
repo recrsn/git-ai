@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestChatCompletionSuccess(t *testing.T) {
+func TestOpenAIChatCompletionSuccess(t *testing.T) {
 	// Setup test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify request method and path
@@ -35,7 +35,7 @@ func TestChatCompletionSuccess(t *testing.T) {
 		}
 
 		// Verify request body
-		var req ChatCompletionRequest
+		var req OpenAIRequest
 		if err := json.Unmarshal(body, &req); err != nil {
 			t.Errorf("Failed to unmarshal request: %v", err)
 		}
@@ -49,13 +49,13 @@ func TestChatCompletionSuccess(t *testing.T) {
 		// Return successful response
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		response := ChatCompletionResponse{
+		response := OpenAIResponse{
 			ID:      "chatcmpl-123",
 			Object:  "chat.completion",
 			Created: 1677652288,
-			Choices: []ChatCompletionChoice{
+			Choices: []OpenAIChoice{
 				{
-					Message: Message{
+					Message: OpenAIMessage{
 						Role:    "assistant",
 						Content: "Hello, how can I assist you today?",
 					},
@@ -83,6 +83,93 @@ func TestChatCompletionSuccess(t *testing.T) {
 	}
 
 	expectedContent := "Hello, how can I assist you today?"
+	if content != expectedContent {
+		t.Errorf("Expected content '%s', got '%s'", expectedContent, content)
+	}
+}
+
+func TestAnthropicChatCompletionSuccess(t *testing.T) {
+	// Setup test server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify request method and path
+		if r.Method != "POST" {
+			t.Errorf("Expected POST request, got %s", r.Method)
+		}
+		if r.URL.Path != "/messages" {
+			t.Errorf("Expected path /messages, got %s", r.URL.Path)
+		}
+
+		// Verify headers
+		if r.Header.Get("Content-Type") != "application/json" {
+			t.Errorf("Expected Content-Type: application/json, got %s", r.Header.Get("Content-Type"))
+		}
+		if r.Header.Get("x-api-key") != "test-api-key" {
+			t.Errorf("Expected x-api-key: test-api-key, got %s", r.Header.Get("x-api-key"))
+		}
+		if r.Header.Get("anthropic-version") != "2023-06-01" {
+			t.Errorf("Expected anthropic-version: 2023-06-01, got %s", r.Header.Get("anthropic-version"))
+		}
+
+		// Read request body
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("Failed to read request body: %v", err)
+		}
+
+		// Verify request body
+		var req AnthropicRequest
+		if err := json.Unmarshal(body, &req); err != nil {
+			t.Errorf("Failed to unmarshal request: %v", err)
+		}
+		if req.Model != "claude-3-5-haiku-latest" {
+			t.Errorf("Expected model claude-3-5-haiku-latest, got %s", req.Model)
+		}
+		if req.System != "You are a helpful assistant." {
+			t.Errorf("Expected system prompt, got %s", req.System)
+		}
+		if len(req.Messages) != 1 || req.Messages[0].Role != "user" || req.Messages[0].Content != "Hello" {
+			t.Errorf("Unexpected messages: %+v", req.Messages)
+		}
+
+		// Return successful response
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		response := AnthropicResponse{
+			ID:   "msg_123",
+			Type: "message",
+			Role: "assistant",
+			Content: []AnthropicContent{
+				{
+					Type: "text",
+					Text: "Hello, how can I help you today?",
+				},
+			},
+			Model: "claude-3-5-haiku-latest",
+		}
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	// Create client with Anthropic provider
+	client, _ := NewClientWithProvider("anthropic", server.URL, "test-api-key")
+
+	// Test the ChatCompletion function
+	messages := []Message{
+		{
+			Role:    "system",
+			Content: "You are a helpful assistant.",
+		},
+		{
+			Role:    "user",
+			Content: "Hello",
+		},
+	}
+	content, err := client.ChatCompletion("claude-3-5-haiku-latest", messages)
+	if err != nil {
+		t.Fatalf("ChatCompletion failed: %v", err)
+	}
+
+	expectedContent := "Hello, how can I help you today?"
 	if content != expectedContent {
 		t.Errorf("Expected content '%s', got '%s'", expectedContent, content)
 	}
@@ -236,15 +323,19 @@ func TestChatCompletionReadResponseError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// Create a custom client with a transport that returns a reader that always errors
+	// Create a custom provider with a transport that returns a reader that always errors
 	originalClient := &http.Client{
 		Transport: &errorRoundTripper{},
 	}
 
-	client := &Client{
+	provider := &OpenAIProvider{
 		BaseURL:    server.URL,
 		APIKey:     "test-api-key",
 		HTTPClient: originalClient,
+	}
+
+	client := &Client{
+		provider: provider,
 	}
 
 	messages := []Message{

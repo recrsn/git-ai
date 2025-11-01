@@ -114,7 +114,7 @@ func summarizeBatch(cfg config.Config, fileBatch []FileDiff) (string, error) {
 		return "", config.ErrLLMNotConfigured
 	}
 
-	client, err := llm.NewClient(cfg.Endpoint, cfg.APIKey)
+	client, err := llm.NewClientWithProvider(cfg.Provider, cfg.Endpoint, cfg.APIKey)
 	if err != nil {
 		return "", fmt.Errorf("failed to create LLM client: %w", err)
 	}

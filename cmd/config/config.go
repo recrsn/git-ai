@@ -138,9 +138,33 @@ func executeConfig() {
 
 		configResult.Endpoint = endpoint
 	} else {
-		// Set endpoint for known provider
+		// Set default endpoint for known provider, but allow override
+		defaultEndpoint := ""
 		if providerConfig, ok := providers[configResult.Provider]; ok {
-			configResult.Endpoint = providerConfig.endpoint
+			defaultEndpoint = providerConfig.endpoint
+		}
+
+		// If existing endpoint matches the default, use empty string as prompt default
+		// Otherwise show the custom endpoint
+		promptDefault := ""
+		if existingConfig.Endpoint != "" && existingConfig.Endpoint != defaultEndpoint {
+			promptDefault = existingConfig.Endpoint
+		}
+
+		endpoint, err := ui.PromptForInput(
+			fmt.Sprintf("Enter API endpoint URL for %s (leave blank for default: %s):", configResult.Provider, defaultEndpoint),
+			promptDefault,
+		)
+
+		if err != nil {
+			ui.ExitWithError(fmt.Sprintf("Error getting endpoint: %v", err))
+		}
+
+		// Use default if user left it blank
+		if endpoint == "" {
+			configResult.Endpoint = defaultEndpoint
+		} else {
+			configResult.Endpoint = endpoint
 		}
 	}
 

@@ -17,7 +17,7 @@ func GenerateCommitMessage(cfg config.Config, diff, recentCommits string, useCon
 		return "", config.ErrLLMNotConfigured
 	}
 
-	client, err := llm.NewClient(cfg.Endpoint, cfg.APIKey)
+	client, err := llm.NewClientWithProvider(cfg.Provider, cfg.Endpoint, cfg.APIKey)
 	if err != nil {
 		return "", fmt.Errorf("failed to create LLM client: %w", err)
 	}
