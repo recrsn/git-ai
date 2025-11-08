@@ -77,7 +77,7 @@ func executeBranch(description, diff string) {
 
 // generateBranchNameWithDiff generates a branch name based on user input, diff, and existing branches
 func generateBranchNameWithDiff(cfg config.Config, request, diff string) (string, error) {
-	if cfg.Endpoint == "" || cfg.APIKey == "" {
+	if cfg.APIKey == "" {
 		return "", config.ErrLLMNotConfigured
 	}
 

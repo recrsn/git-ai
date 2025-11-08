@@ -13,9 +13,11 @@ import (
 // GenerateCommitMessage generates a commit message based on staged changes and commit history
 func GenerateCommitMessage(cfg config.Config, diff, recentCommits string, useConventionalCommits bool, commitsWithDescriptions bool) (string, error) {
 	// Use the LLM for commit message generation
-	if cfg.Endpoint == "" || cfg.APIKey == "" {
+	if cfg.APIKey == "" {
 		return "", config.ErrLLMNotConfigured
 	}
+
+	logger.Debug("Using provider: %s, endpoint: %s, model: %s", cfg.Provider, cfg.Endpoint, cfg.Model)
 
 	client, err := llm.NewClientWithProvider(cfg.Provider, cfg.Endpoint, cfg.APIKey)
 	if err != nil {

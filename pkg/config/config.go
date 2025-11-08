@@ -23,6 +23,7 @@ type Config struct {
 	Model    string `mapstructure:"model"`
 	Endpoint string `mapstructure:"endpoint"`
 	Editor   string `mapstructure:"editor"`
+	LogLevel string `mapstructure:"log_level"`
 }
 
 // DefaultConfig returns the default configuration
@@ -33,6 +34,7 @@ func DefaultConfig() Config {
 		Model:    "gpt-4-turbo",
 		Endpoint: "https://api.openai.com/v1",
 		Editor:   "",
+		LogLevel: "info",
 	}
 }
 
@@ -44,12 +46,12 @@ func initViper() (*viper.Viper, error) {
 	if ExplicitConfigPath != "" {
 		v.SetConfigFile(ExplicitConfigPath)
 
-		// Set defaults
+		// Set defaults (except endpoint, which is provider-specific)
 		defaults := DefaultConfig()
 		v.SetDefault("provider", defaults.Provider)
 		v.SetDefault("api_key", defaults.APIKey)
 		v.SetDefault("model", defaults.Model)
-		v.SetDefault("endpoint", defaults.Endpoint)
+		v.SetDefault("log_level", defaults.LogLevel)
 
 		// Read configuration
 		if err := v.ReadInConfig(); err != nil {
@@ -81,13 +83,13 @@ func initViper() (*viper.Viper, error) {
 		v.AddConfigPath(cwd)
 	}
 
-	// Set defaults
+	// Set defaults (except endpoint, which is provider-specific)
 	defaults := DefaultConfig()
 	v.SetDefault("provider", defaults.Provider)
 	v.SetDefault("api_key", defaults.APIKey)
 	v.SetDefault("model", defaults.Model)
-	v.SetDefault("endpoint", defaults.Endpoint)
 	v.SetDefault("editor", defaults.Editor)
+	v.SetDefault("log_level", defaults.LogLevel)
 
 	// Environment variables
 	v.SetEnvPrefix("GIT_AI")
@@ -99,6 +101,7 @@ func initViper() (*viper.Viper, error) {
 	v.BindEnv("model", "GIT_AI_MODEL")
 	v.BindEnv("endpoint", "GIT_AI_API_URL")
 	v.BindEnv("editor", "GIT_AI_EDITOR")
+	v.BindEnv("log_level", "GIT_AI_LOG_LEVEL")
 
 	// Read configuration
 	err = v.ReadInConfig()
@@ -159,7 +162,7 @@ func LoadConfig() (Config, error) {
 func GetDefaultEndpoint(provider string) string {
 	switch provider {
 	case "anthropic":
-		return "https://api.anthropic.com"
+		return "https://api.anthropic.com/v1"
 	case "openai":
 		return "https://api.openai.com/v1"
 	case "ollama":
@@ -191,6 +194,7 @@ func SaveConfig(config Config) error {
 	v.Set("model", config.Model)
 	v.Set("endpoint", config.Endpoint)
 	v.Set("editor", config.Editor)
+	v.Set("log_level", config.LogLevel)
 
 	if err := v.WriteConfig(); err != nil {
 		// Check if the file doesn't exist

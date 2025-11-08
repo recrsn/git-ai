@@ -110,7 +110,7 @@ func createFileBatches(fileDiffs []FileDiff, tokenLimit int) [][]FileDiff {
 
 // summarizeBatch summarizes a batch of file diffs together
 func summarizeBatch(cfg config.Config, fileBatch []FileDiff) (string, error) {
-	if cfg.Endpoint == "" || cfg.APIKey == "" {
+	if cfg.APIKey == "" {
 		return "", config.ErrLLMNotConfigured
 	}
 

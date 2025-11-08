@@ -98,7 +98,8 @@ func (p *AnthropicProvider) ChatCompletion(model string, messages []Message) (st
 		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	httpReq, err := http.NewRequest("POST", fmt.Sprintf("%s/messages", p.BaseURL), bytes.NewReader(reqBody))
+	url := fmt.Sprintf("%s/messages", p.BaseURL)
+	httpReq, err := http.NewRequest("POST", url, bytes.NewReader(reqBody))
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}

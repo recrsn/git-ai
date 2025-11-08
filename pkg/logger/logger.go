@@ -34,7 +34,7 @@ var levelPrefixes = map[LogLevel]string{
 	FATAL: "FATAL",
 }
 
-// SetLevel sets the current log level
+// SetLevel sets the current log level based on verbosity count
 func SetLevel(verbosity int) {
 	if verbosity < 0 {
 		verbosity = 0
@@ -43,6 +43,25 @@ func SetLevel(verbosity int) {
 		verbosity = int(FATAL)
 	}
 	currentLevel = FATAL - LogLevel(verbosity)
+}
+
+// SetLevelByName sets the current log level by name
+func SetLevelByName(levelName string) {
+	switch levelName {
+	case "debug":
+		currentLevel = DEBUG
+	case "info":
+		currentLevel = INFO
+	case "warn":
+		currentLevel = WARN
+	case "error":
+		currentLevel = ERROR
+	case "fatal":
+		currentLevel = FATAL
+	default:
+		// Default to INFO if unknown
+		currentLevel = INFO
+	}
 }
 
 // log prints a log message with the specified level

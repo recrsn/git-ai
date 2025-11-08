@@ -273,7 +273,28 @@ func executeConfig() {
 		configResult.APIKey = apiKey
 	}
 
-	// Step 6: Editor preference
+	// Step 6: Log Level
+	ui.DisplaySection("Log Level")
+
+	logLevelOptions := []string{"debug", "info", "warn", "error", "fatal"}
+	defaultLogLevel := existingConfig.LogLevel
+	if defaultLogLevel == "" {
+		defaultLogLevel = "info"
+	}
+
+	selectedLogLevel, err := ui.PromptForSelection(
+		logLevelOptions,
+		defaultLogLevel,
+		"Select log level:",
+	)
+
+	if err != nil {
+		ui.ExitWithError(fmt.Sprintf("Error selecting log level: %v", err))
+	}
+
+	configResult.LogLevel = selectedLogLevel
+
+	// Step 7: Editor preference
 	ui.DisplaySection("Editor Preference")
 
 	currentEditor := git.GetPreferredEditor()

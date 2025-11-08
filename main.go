@@ -19,20 +19,27 @@ var (
 		Short: "Git AI - LLM-powered Git extension",
 		Long:  `Git AI enhances your Git workflow with AI-powered features like automatic commit message generation.`,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			logger.SetLevel(verbose)
-
-			logger.Debug("Git AI session started")
-
-			// Set up logging level based on verbose flags
-			if verbose > 0 {
-				logger.Debug("Verbose logging enabled (level %d)", verbose)
-			}
-
 			// If config path is explicitly provided, set it
 			if configPath != "" {
-				logger.Debug("Using explicit config file: %s", configPath)
 				config.ExplicitConfigPath = configPath
 			}
+
+			// Load config to get log level
+			cfg, err := config.LoadConfig()
+			if err != nil {
+				// If config loading fails, use CLI verbose flag
+				logger.SetLevel(verbose)
+			} else {
+				// CLI verbose flag overrides config if set
+				if verbose > 0 {
+					logger.SetLevel(verbose)
+				} else {
+					// Use log level from config
+					logger.SetLevelByName(cfg.LogLevel)
+				}
+			}
+
+			logger.Debug("Git AI session started")
 		},
 	}
 )
